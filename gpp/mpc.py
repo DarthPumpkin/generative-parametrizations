@@ -2,11 +2,12 @@ import gym
 import numpy as np
 
 from reward_functions import RewardFunction
+from models.base import BaseModel
 
 
 class MPC:
 
-    def __init__(self, env: gym.Env, model: object, horizon: int, n_action_sequences: int, np_random=None):
+    def __init__(self, env: gym.Env, model: BaseModel, horizon: int, n_action_sequences: int, np_random=None):
 
         self.reward_function = RewardFunction(env)
 
@@ -28,7 +29,7 @@ class MPC:
         all_samples = npr.uniform(action_space.low, action_space.high,
                                   (self.n_action_sequences, self.horizon, action_space.shape[0]))
 
-        all_states = self.model.forward(all_samples, self.env)
+        all_states = self.model.forward_sim(all_samples, self.env)
 
         rewards = np.zeros(all_samples.shape[0])
 
