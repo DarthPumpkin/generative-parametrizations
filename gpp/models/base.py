@@ -4,8 +4,10 @@ import numpy as np
 
 class BaseModel:
 
-    def __init__(self):
-        pass
+    def __init__(self, np_random=None):
+        if np_random is None:
+            np_random = np.random
+        self.np_random = np_random
 
     def forward_sim(self, action_sequences: np.ndarray, env: gym.Env):
         """
