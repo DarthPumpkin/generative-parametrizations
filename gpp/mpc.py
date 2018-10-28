@@ -1,8 +1,8 @@
 import gym
 import numpy as np
 
-from reward_functions import RewardFunction
-from models.base import BaseModel
+from .reward_functions import RewardFunction
+from .models.base import BaseModel
 
 
 class MPC:
