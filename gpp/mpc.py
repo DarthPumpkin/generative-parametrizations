@@ -1,12 +1,14 @@
 import gym
 import numpy as np
 
+from reward_functions import RewardFunction
+
 
 class MPC:
 
     def __init__(self, env: gym.Env, model: object, horizon: int, n_action_sequences: int, np_random=None):
 
-        self.reward_function = self.build_reward_function(env)
+        self.reward_function = RewardFunction(env)
 
         if np_random is None:
             np_random = np.random
@@ -17,14 +19,11 @@ class MPC:
         self.horizon = horizon
         self.model = model
 
-    @staticmethod
-    def build_reward_function(env: gym.Env) -> function:
-        pass
-
     def get_action(self):
 
         npr = self.np_random
         action_space = self.env.action_space
+        goal = None
 
         all_samples = npr.uniform(action_space.low, action_space.high,
                                   (self.n_action_sequences, self.horizon, action_space.shape[0]))
@@ -39,7 +38,7 @@ class MPC:
             # for each timestep
             for t in range(all_states.shape[1]):
 
-                rewards[s] += self.reward_function(all_states[s, t])
+                rewards[s] += self.reward_function(all_states[s, t], goal)
 
         max_reward_i = np.argmax(rewards)
         best_action = all_samples[max_reward_i, 0]
