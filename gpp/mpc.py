@@ -2,7 +2,7 @@ import gym
 import numpy as np
 
 from .reward_functions import RewardFunction
-from .models.base import BaseModel
+from .models import BaseModel
 
 
 class MPC:
@@ -24,7 +24,11 @@ class MPC:
 
         npr = self.np_random
         action_space = self.env.action_space
-        goal = None
+
+        if hasattr(self.env.unwrapped, 'goal'):
+            goal = self.env.unwrapped.goal
+        else:
+            goal = None
 
         all_samples = npr.uniform(action_space.low, action_space.high,
                                   (self.n_action_sequences, self.horizon, action_space.shape[0]))
@@ -33,13 +37,9 @@ class MPC:
 
         rewards = np.zeros(all_samples.shape[0])
 
-        # for each sequence of actions
-        for s in range(all_states.shape[0]):
-
-            # for each timestep
-            for t in range(all_states.shape[1]):
-
-                rewards[s] += self.reward_function(all_states[s, t], goal)
+        # for each timestep
+        for t in range(all_states.shape[1]):
+            rewards += self.reward_function(all_states[:, t], goal)
 
         max_reward_i = np.argmax(rewards)
         best_action = all_samples[max_reward_i, 0]

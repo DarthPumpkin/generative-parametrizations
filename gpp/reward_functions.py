@@ -23,12 +23,19 @@ class RewardFunction:
 
 
 def _build_reward_fn_fetch_env(env: FetchEnv):
-    # TODO: Check shapes
 
     reward_type = env.reward_type
     distance_threshold = env.distance_threshold
 
+    if env.has_object:
+        # achieved goal is object_pos
+        achieved_goal_idx = np.arange(3, 6)
+    else:
+        # achieved goal is gripper pos
+        achieved_goal_idx = np.arange(0, 3)
+
     def reward_fn(x: np.ndarray, goal: np.ndarray):
+        x = x.take(achieved_goal_idx, axis=-1)
         d = np.linalg.norm(x - goal, axis=-1)
         if reward_type == 'sparse':
             return -(d > distance_threshold).astype(np.float32)
