@@ -12,7 +12,7 @@ class MPC:
         self.reward_function = RewardFunction(env)
 
         if np_random is None:
-            np_random = np.random
+            np_random = np.random.RandomState()
         self.np_random = np_random
 
         self.env = env
