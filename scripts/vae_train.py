@@ -18,7 +18,7 @@ learning_rate = 0.0001
 kl_tolerance = 0.5
 
 # Parameters for training
-NUM_EPOCH = 10
+NUM_EPOCH = 500
 DATA_DIR = "record"
 
 model_save_path = "tf_vae"
