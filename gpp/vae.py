@@ -10,7 +10,6 @@ def reset_graph():
     tf.reset_default_graph()
 
 
-
 class ConvVAE(object):
     def __init__(self, z_size=32, batch_size=1, learning_rate=0.0001, kl_tolerance=0.5, is_training=False, reuse=False,
                  gpu_mode=False):
