@@ -21,21 +21,24 @@ from gym.envs.classic_control.pendulum import GaussianPendulumEnv
 from utilities import make_tf_histogram, tf_summary_from_plot_buf
 
 
-SET_NAME = 'set5'
+SET_NAME = 'set6'
 OUT_DIR = f'../out/{SET_NAME}/'
 TEST_RESULTS_FILE = f'../results/{SET_NAME}_test_results.pkl'
-OVERWRITE_EXISTING_DATA = False
+OVERWRITE_EXISTING_DATA = not False
 
 TRAIN = False
 PERIODIC_TEST = True
-PERIODIC_TEST_INTERVAL = 300 # episodes
-FINAL_TEST = False
-VISUAL_TEST = True
+PERIODIC_TEST_INTERVAL = 500 # episodes
+FINAL_TEST = True
+VISUAL_TEST = False
 
 ALG = 'trpo'
-TRAINING_STEPS = 700_000
-TEST_RUNS = 200
-TRIALS_PER_EXPERIMENT = 10
+TRAINING_STEPS = 4_000_000
+TEST_RUNS = 1000
+TRIALS_PER_EXPERIMENT = 3
+TEST_LINSPACE_MASS = True
+
+TB_LOG_TEST_REW_BY_MASS = False
 
 EXPERIMENTS = [
     {
@@ -82,7 +85,11 @@ EXPERIMENTS = [
     }
 ]
 
-# EXPERIMENTS = [EXPERIMENTS[3]]
+EXPERIMENTS = [
+    EXPERIMENTS[0],
+    EXPERIMENTS[2],
+    EXPERIMENTS[5]
+]
 
 
 def plot_rewards_by_mass(runs, as_buf=True):
@@ -131,7 +138,7 @@ def visual_test(model_path: str, exp_config: dict):
         print(f'==> distribution params: {mass_distr_params} (mean, stdev) | sampled mass: {sampled_mass}')
         for _ in range(200):
             test_env.render()
-            action, states = model.predict(obs)
+            action, states = model.predict(obs, deterministic=True)
             obs, rewards, dones, info = test_env.step(action)
             sleep(1./60)
 
@@ -170,15 +177,21 @@ def test(model_path: str, exp_config: dict):
     )
 
     runs = np.zeros((TEST_RUNS, 4))
+    fixed_masses = np.linspace(0.030, 1.600, TEST_RUNS)
 
     for test_ep in range(runs.shape[0]):
 
         obs = test_env.reset()
+
+        if TEST_LINSPACE_MASS:
+            p = raw_env.physical_props
+            raw_env.physical_props = p[0], fixed_masses[test_ep], p[2]
+
         mass_distr_params = raw_env.mass_distr_params.copy()
         sampled_mass = raw_env.physical_props[1]
 
         while True:
-            action, states = model.predict(obs)
+            action, states = model.predict(obs, deterministic=True)
             obs, rewards, dones, info = test_env.step(action)
             rewards_by_episode = monitor.episode_rewards
             episode = len(rewards_by_episode)
@@ -237,9 +250,10 @@ def train(model_path: str, tmp_model_path: str, monitor_path: str, tensorboard_p
         hist_summary = make_tf_histogram('test_mass_distrib', results_[:, 2], bins=50)
         writer.add_summary(hist_summary, step_)
 
-        plot_buf = plot_rewards_by_mass(results_)
-        img_summary = tf_summary_from_plot_buf(plot_buf, 'test_reward_by_mass')
-        writer.add_summary(img_summary, step_)
+        if TB_LOG_TEST_REW_BY_MASS:
+            plot_buf = plot_rewards_by_mass(results_)
+            img_summary = tf_summary_from_plot_buf(plot_buf, 'test_reward_by_mass')
+            writer.add_summary(img_summary, step_)
 
     cb = callback if PERIODIC_TEST else None
     model.learn(total_timesteps=exp_config.get('total_timesteps', TRAINING_STEPS), callback=cb)
@@ -312,10 +326,11 @@ def main():
                 with open(TEST_RESULTS_FILE, 'wb') as f:
                     pickle.dump(results_dict, f)
 
-            results = results_dict[trial_name]
-            all_rewards[j] = results[:, 3]
-            avg_reward = results[:, 3].mean()
-            exp_avg_reward[j] = avg_reward
+            if FINAL_TEST:
+                results = results_dict[trial_name]
+                all_rewards[j] = results[:, 3]
+                avg_reward = results[:, 3].mean()
+                exp_avg_reward[j] = avg_reward
 
             if VISUAL_TEST:
                 print(f'\nRunning visual test for {trial_name} (test mean reward: {avg_reward})...')
