@@ -1,6 +1,8 @@
+from collections import OrderedDict
+
 import gym
 import gym.spaces
-from collections import OrderedDict
+import numpy as np
 
 
 def get_observation_space(env: gym.Env):
@@ -15,3 +17,7 @@ def get_observation_space(env: gym.Env):
         return box
     else:
         raise ValueError(f'Unknown observation space type ({obs_space})!')
+
+
+def get_observations(env: gym.Env) -> np.ndarray:
+    raise NotImplementedError
