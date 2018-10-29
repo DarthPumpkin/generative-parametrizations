@@ -30,18 +30,18 @@ class MPC:
         else:
             goal = None
 
-        all_samples = npr.uniform(action_space.low, action_space.high,
+        all_actions = npr.uniform(action_space.low, action_space.high,
                                   (self.n_action_sequences, self.horizon, action_space.shape[0]))
 
-        all_states = self.model.forward_sim(all_samples, self.env)
+        all_states = self.model.forward_sim(all_actions, self.env)
 
-        rewards = np.zeros(all_samples.shape[0])
+        rewards = np.zeros(all_actions.shape[0])
 
         # for each timestep
         for t in range(all_states.shape[1]):
-            rewards += self.reward_function(all_states[:, t], goal)
+            rewards += self.reward_function(all_states[:, t], goal=goal, actions=all_actions[:, t])
 
         max_reward_i = np.argmax(rewards)
-        best_action = all_samples[max_reward_i, 0]
+        best_action = all_actions[max_reward_i, 0]
 
         return best_action
