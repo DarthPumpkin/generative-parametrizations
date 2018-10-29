@@ -3,6 +3,8 @@ import numpy as np
 from keras.datasets import cifar10
 import _gpp
 from gpp.vae import ConvVAE
+import matplotlib.pyplot as plt
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu systems
 
 
@@ -22,10 +24,10 @@ model_save_path = "tf_vae"
 if not os.path.exists(model_save_path):
     os.makedirs(model_save_path)
 
-(_, _), (x_test, _) = cifar10.load_data()
+(x_train, _), (x_test, _) = cifar10.load_data()
 
 # split into batches:
-dataset = x_test
+dataset = x_train
 total_length = len(dataset)
 num_batches = int(np.floor(total_length / batch_size))
 print("num_batches", num_batches)
@@ -62,3 +64,11 @@ for epoch in range(NUM_EPOCH):
 
 # finished, final model:
 vae.save_json("tf_vae/vae.json")
+
+frame = x_test[0]
+plt.imshow(frame)
+plt.show()
+batch_z = vae.encode(frame)
+
+reconstruct = vae.decode(batch_z)
+plt.imshow(reconstruct[0])
