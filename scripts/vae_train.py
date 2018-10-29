@@ -62,17 +62,22 @@ for epoch in range(NUM_EPOCH):
         # if (train_step + 1) % 5000 == 0:
         #     vae.save_json("tf_vae/vae.json")
 
-# finished, final model:
-# vae.save_json("tf_vae/vae.json")
+    # finished, final model:
+    # vae.save_json("tf_vae/vae.json")
 
-batch_z = vae.encode(x_test[:batch_size])
-reconstruct = vae.decode(batch_z)
-for i in range(batch_size):
-    plt.subplot(1, 2, 1)
-    original = x_test[i]
-    plt.imshow(original)
-    plt.axis("off")
-    plt.subplot(1, 2, 2)
-    plt.imshow(reconstruct[i])
-    plt.axis("off")
-    plt.savefig("fig{}.png".format(i))
+    batch_z = vae.encode(x_test[:batch_size])
+    reconstruct = vae.decode(batch_z)
+    im2print = 10
+
+    for i in range(im2print):
+        plt.subplot(im2print, 2, 1+2*i)
+        original = x_test[i]
+        plt.imshow(original)
+        plt.axis("off")
+
+        plt.subplot(im2print, 2, 2+2*i)
+        plt.imshow(reconstruct[i])
+        plt.axis("off")
+
+    plt.savefig("epoch_"+str(epoch)+"_fig_"+str(i)+".png")
+    plt.close("all")
