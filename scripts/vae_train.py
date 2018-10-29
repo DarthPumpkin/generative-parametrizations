@@ -18,12 +18,13 @@ learning_rate = 0.0001
 kl_tolerance = 0.5
 
 # Parameters for training
-NUM_EPOCH = 500
+NUM_EPOCH = 10
 DATA_DIR = "record"
+IMG_OUTPUT_DIR = './out'
 
 model_save_path = "tf_vae"
-if not os.path.exists(model_save_path):
-    os.makedirs(model_save_path)
+os.makedirs(model_save_path, exist_ok=True)
+os.makedirs(IMG_OUTPUT_DIR, exist_ok=True)
 
 (x_train, _), (x_test, _) = cifar10.load_data()
 
@@ -53,6 +54,7 @@ for epoch in range(NUM_EPOCH):
         batch = dataset[idx * batch_size:(idx + 1) * batch_size]
 
         obs = batch.astype(np.float) / 255.0
+        # obs = (batch.astype(np.float) - 127.5) / 127.5
 
         feed = {vae.x: obs, }
 
@@ -67,6 +69,8 @@ for epoch in range(NUM_EPOCH):
 
     batch_z = vae.encode(x_test[:batch_size])
     reconstruct = vae.decode(batch_z)
+    reconstruct = (reconstruct * 255).astype(np.uint8)
+    # reconstruct = (reconstruct * 127.5 + 127.5).astype(np.uint8)
     im2print = 10
 
     for i in range(im2print):
@@ -79,5 +83,5 @@ for epoch in range(NUM_EPOCH):
         plt.imshow(reconstruct[i])
         plt.axis("off")
 
-    plt.savefig("epoch_"+str(epoch)+"_fig_"+str(i)+".png")
+    plt.savefig(f'{IMG_OUTPUT_DIR}/epoch_{epoch}_fig_{i}.png')
     plt.close("all")
