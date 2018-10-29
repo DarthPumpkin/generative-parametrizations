@@ -48,7 +48,7 @@ print("train", "step", "loss", "recon_loss", "kl_loss")
 train_step = train_loss = r_loss = kl_loss = None
 for epoch in range(NUM_EPOCH):
     np.random.shuffle(dataset)
-    epoch > 0 and print("step", (train_step + 1), train_loss, r_loss, kl_loss)
+    epoch > 0 and print("Epoch: ", epoch, " step ", (train_step + 1), train_loss, r_loss, kl_loss)
     for idx in tqdm(range(num_batches)):
         batch = dataset[idx * batch_size:(idx + 1) * batch_size]
 
