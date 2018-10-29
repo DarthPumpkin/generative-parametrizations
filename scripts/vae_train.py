@@ -17,7 +17,7 @@ learning_rate = 0.0001
 kl_tolerance = 0.5
 
 # Parameters for training
-NUM_EPOCH = 10
+NUM_EPOCH = 5
 DATA_DIR = "record"
 
 model_save_path = "tf_vae"
@@ -68,7 +68,8 @@ vae.save_json("tf_vae/vae.json")
 frame = x_test[0]
 plt.imshow(frame)
 plt.show()
-batch_z = vae.encode(frame)
+batch_z = vae.encode(x_test[:batch_size])
 
 reconstruct = vae.decode(batch_z)
 plt.imshow(reconstruct[0])
+plt.show()
