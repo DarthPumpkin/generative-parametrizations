@@ -1,3 +1,5 @@
+from typing import Sequence
+
 import gym
 import numpy as np
 
@@ -18,6 +20,8 @@ class BaseModel:
         """
         raise NotImplementedError
 
-    def train(self, *args, **kwargs):
-        """Trains the model on a given dataset"""
+    def train(self, episodes: Sequence[(np.ndarray, np.ndarray)]):
+        """Trains the model on a given sequence of episodes
+        :param episodes: sequence of episodes. Every episode is a tuple (state_sequence, action_sequence) of sizes (n
+        + 1 x state_size) and (n x action_size), respectively"""
         raise NotImplementedError
