@@ -23,7 +23,7 @@ class RewardFunction:
             raise NotImplemented(f'No reward function for environment of type {type(env)}')
 
     def __call__(self, states: np.ndarray, goal: np.ndarray=None, actions: np.ndarray=None):
-        return self._reward_fn(states, goal=goal, actions=actions)
+        return self._reward_fn(states, goal=goal, actions=actions).ravel()
 
 
 def _build_reward_fn_pendulum_env(env: PendulumEnv):
