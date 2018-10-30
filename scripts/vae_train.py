@@ -18,7 +18,7 @@ learning_rate = 0.0001
 kl_tolerance = 0.5
 
 # Parameters for training
-NUM_EPOCH = 10
+NUM_EPOCH = 100
 DATA_DIR = "record"
 IMG_OUTPUT_DIR = './out'
 
@@ -29,7 +29,7 @@ os.makedirs(IMG_OUTPUT_DIR, exist_ok=True)
 (x_train, _), (x_test, _) = cifar10.load_data()
 
 # split into batches:
-dataset = x_test
+dataset = x_test[0:batch_size]
 total_length = len(dataset)
 num_batches = int(np.floor(total_length / batch_size))
 print("num_batches", num_batches)
