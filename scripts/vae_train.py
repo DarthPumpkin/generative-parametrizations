@@ -49,7 +49,8 @@ print("train", "step", "loss", "recon_loss", "kl_loss")
 train_step = train_loss = r_loss = kl_loss = None
 for epoch in range(NUM_EPOCH):
     np.random.shuffle(dataset)
-    epoch > 0 and print("Epoch: ", epoch, " step ", (train_step + 1), train_loss, r_loss, kl_loss)
+    epoch > 0 and print("Epoch: ", epoch, " step: ", (train_step + 1), " train loss: ", train_loss,
+                        " r loss: ", r_loss, " kl loss: ", kl_loss)
     for idx in tqdm(range(num_batches)):
         batch = dataset[idx * batch_size:(idx + 1) * batch_size]
 
@@ -58,9 +59,12 @@ for epoch in range(NUM_EPOCH):
 
         feed = {vae.x: obs, }
 
-        (train_loss, r_loss, kl_loss, train_step, _) = vae.sess.run([
-            vae.loss, vae.r_loss, vae.kl_loss, vae.global_step, vae.train_op
-        ], feed)
+        (train_loss, r_loss, kl_loss, train_step, _) = vae.sess.run([vae.loss,
+                                                                     vae.r_loss,
+                                                                     vae.kl_loss,
+                                                                     vae.global_step,
+                                                                     vae.train_op],
+                                                                    feed)
         # if (train_step + 1) % 5000 == 0:
         #     vae.save_json("tf_vae/vae.json")
 
@@ -68,8 +72,9 @@ for epoch in range(NUM_EPOCH):
     # vae.save_json("tf_vae/vae.json")
 
     batch_z = vae.encode(x_test[:batch_size])
+    print(batch_z)
     reconstruct = vae.decode(batch_z)
-    reconstruct = (reconstruct * 255).astype(np.uint8)
+    # reconstruct = (reconstruct * 255).astype(np.uint8)
     # reconstruct = (reconstruct * 127.5 + 127.5).astype(np.uint8)
     im2print = 10
 
