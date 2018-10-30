@@ -90,7 +90,7 @@ class ConvVAE(object):
                 # training
                 self.lr = tf.Variable(self.learning_rate, trainable=False)
                 self.optimizer = tf.train.AdamOptimizer(self.lr)
-                grads = tf.clip_by_value(self.optimizer.compute_gradients(self.loss), -0.1, 0.1)
+                grads = self.optimizer.compute_gradients(self.loss)
                 # can potentially clip gradients here.
 
                 self.train_op = self.optimizer.apply_gradients(
