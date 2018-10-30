@@ -35,7 +35,7 @@ class ConvVAE(object):
             self.x = tf.placeholder(tf.float32, shape=[None, 32, 32, 3])
             # Encoder
             n_filters = 32//2
-            h = tf.layers.conv2d(input = self.x, filters= n_filters, kernel_size = 4, strides=2, activation=tf.nn.relu, name="enc_conv1")
+            h = tf.layers.conv2d(self.x, n_filters, 4, strides=2, activation=tf.nn.relu, name="enc_conv1")
             h = tf.layers.conv2d(h, 2*n_filters, 4, strides=2, activation=tf.nn.relu, name="enc_conv2")
             h = tf.layers.conv2d(h, 4*n_filters, 4, strides=2, activation=tf.nn.relu, name="enc_conv3")
             # h = tf.layers.conv2d(h, 128, 4, strides=2, activation=tf.nn.relu, name="enc_conv4")
