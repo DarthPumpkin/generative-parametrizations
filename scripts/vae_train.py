@@ -29,7 +29,7 @@ os.makedirs(IMG_OUTPUT_DIR, exist_ok=True)
 (x_train, _), (x_test, _) = cifar10.load_data()
 
 # split into batches:
-dataset = x_train
+dataset = x_test
 total_length = len(dataset)
 num_batches = int(np.floor(total_length / batch_size))
 print("num_batches", num_batches)
