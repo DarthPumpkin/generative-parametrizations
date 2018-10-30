@@ -25,21 +25,26 @@ class MPC:
         npr = self.np_random
         action_space = self.env.action_space
 
-        if hasattr(self.env.unwrapped, 'goal'):
-            goal = self.env.unwrapped.goal
-        else:
-            goal = None
-
         all_actions = npr.uniform(action_space.low, action_space.high,
                                   (self.n_action_sequences, self.horizon, action_space.shape[0]))
 
         all_states = self.model.forward_sim(all_actions, self.env)
 
-        rewards = np.zeros(all_actions.shape[0])
+        if hasattr(self.env.unwrapped, 'goal'):
+            goal = self.env.unwrapped.goal
+        else:
+            goal = None
+
+        if self.reward_function.use_dones:
+            dones = np.zeros(self.n_action_sequences, dtype=np.bool)
+        else:
+            dones = None
+
+        rewards = np.zeros(self.n_action_sequences)
 
         # for each timestep
-        for t in range(all_states.shape[1]):
-            rewards += self.reward_function(all_states[:, t], goal=goal, actions=all_actions[:, t])
+        for t in range(self.horizon):
+            rewards += self.reward_function(all_states[:, t], goal=goal, actions=all_actions[:, t], dones=dones)
 
         max_reward_i = np.argmax(rewards)
         best_action = all_actions[max_reward_i, 0]

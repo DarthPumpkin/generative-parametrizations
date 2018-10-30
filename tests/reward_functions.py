@@ -1,7 +1,7 @@
 import gym
 import numpy as np
 import unittest
-from gym.envs.classic_control import PendulumEnv
+from gym.envs.classic_control import PendulumEnv, CartPoleEnv
 from gym.envs.robotics import FetchEnv
 
 import _gpp
@@ -9,6 +9,36 @@ from gpp.reward_functions import RewardFunction
 
 
 class TestRewardFunction(unittest.TestCase):
+
+    def test_cartpole_env(self):
+
+        env = gym.make('CartPole-v0')
+        raw_env = env.unwrapped  # type: CartPoleEnv
+        reward_fn = RewardFunction(env)
+
+        horizon = 500
+        sequences = 100
+
+        obs_space_shape = raw_env.observation_space.shape
+
+        rewards_a = np.zeros((sequences, horizon))
+        all_obs = np.zeros((sequences, horizon) + obs_space_shape)
+
+        for s in range(sequences):
+            env.reset()
+            for h in range(horizon):
+                action = raw_env.action_space.sample()
+                obs, reward_a, done, _ = env.step(action)
+                all_obs[s, h] = obs.copy()
+                rewards_a[s, h] = reward_a
+                if done:
+                    break
+
+        rewards_b = np.zeros((sequences, horizon))
+        dones = np.zeros(sequences, dtype=np.bool)
+        for h in range(horizon):
+            rewards_b[:, h] = reward_fn(all_obs[:, h], dones=dones)
+        self.assertTrue(np.allclose(rewards_a, rewards_b))
 
     def test_pendulum_env(self):
 
@@ -80,3 +110,4 @@ class TestRewardFunction(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
+    #TestRewardFunction().test_cartpole_env()

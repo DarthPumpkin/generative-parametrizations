@@ -1,6 +1,6 @@
 import gym
 from gym.envs.robotics import FetchEnv
-from gym.envs.classic_control import PendulumEnv
+from gym.envs.classic_control import PendulumEnv, CartPoleEnv
 import numpy as np
 
 
@@ -8,6 +8,7 @@ class RewardFunction:
 
     def __init__(self, env: gym.Env):
 
+        self.use_dones = False
         unwrapped = env.unwrapped
 
         if isinstance(unwrapped, FetchEnv):
@@ -19,11 +20,40 @@ class RewardFunction:
         elif isinstance(unwrapped, PendulumEnv):
             self._reward_fn = _build_reward_fn_pendulum_env(unwrapped)
 
+        elif isinstance(unwrapped, CartPoleEnv):
+            self.use_dones = True
+            self._reward_fn = _build_reward_fn_cartpole_env(unwrapped)
+
         else:
             raise NotImplemented(f'No reward function for environment of type {type(env)}')
 
-    def __call__(self, states: np.ndarray, goal: np.ndarray=None, actions: np.ndarray=None):
-        return self._reward_fn(states, goal=goal, actions=actions).ravel()
+    def __call__(self, states: np.ndarray, goal: np.ndarray=None,
+                 actions: np.ndarray=None, dones: np.ndarray=None) -> (np.ndarray, np.ndarray):
+        return self._reward_fn(states, goal=goal, actions=actions, dones=dones).squeeze()
+
+
+def _build_reward_fn_cartpole_env(env: CartPoleEnv):
+
+    x_thr = env.x_threshold
+    theta_thr = env.theta_threshold_radians
+    reward_when_done = 0.0
+
+    def reward_fn(states: np.ndarray, dones: np.array, **kwargs):
+
+        x = states.take([0], axis=-1)
+        theta = states.take([2], axis=-1)
+
+        new_dones = (x < -x_thr) | (x > x_thr) | (theta < -theta_thr) | (theta > theta_thr) # type: np.ndarray
+        assert new_dones.dtype == np.bool
+        new_dones = new_dones.squeeze()
+
+        rewards = np.ones(new_dones.shape)
+        rewards[dones] = reward_when_done
+        dones |= new_dones
+
+        return rewards
+
+    return reward_fn
 
 
 def _build_reward_fn_pendulum_env(env: PendulumEnv):
