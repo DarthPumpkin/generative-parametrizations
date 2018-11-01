@@ -1,5 +1,4 @@
 import gym
-from gym.envs.robotics import FetchEnv
 from gym.envs.classic_control import PendulumEnv, CartPoleEnv
 import numpy as np
 
@@ -11,10 +10,7 @@ class RewardFunction:
         self.use_dones = False
         unwrapped = env.unwrapped
 
-        if isinstance(unwrapped, FetchEnv):
-            self._reward_fn = _build_reward_fn_fetch_env(unwrapped)
-
-        elif isinstance(unwrapped, gym.GoalEnv):
+        if isinstance(unwrapped, gym.GoalEnv):
             self._reward_fn = _build_reward_fn_goal_env(unwrapped)
 
         elif isinstance(unwrapped, PendulumEnv):
@@ -25,7 +21,13 @@ class RewardFunction:
             self._reward_fn = _build_reward_fn_cartpole_env(unwrapped)
 
         else:
-            raise NotImplemented(f'No reward function for environment of type {type(env)}')
+            try:
+                from gym.envs.robotics import FetchEnv
+                if isinstance(unwrapped, FetchEnv):
+                    self._reward_fn = _build_reward_fn_fetch_env(unwrapped)
+                    return
+            finally:
+                raise NotImplemented(f'No reward function for environment of type {type(env)}')
 
     def __call__(self, states: np.ndarray, goal: np.ndarray=None,
                  actions: np.ndarray=None, dones: np.ndarray=None) -> (np.ndarray, np.ndarray):
@@ -75,7 +77,7 @@ def _build_reward_fn_pendulum_env(env: PendulumEnv):
     return reward_fn
 
 
-def _build_reward_fn_fetch_env(env: FetchEnv):
+def _build_reward_fn_fetch_env(env: 'gym.envs.robotics.FetchEnv'):
 
     reward_type = env.reward_type
     distance_threshold = env.distance_threshold

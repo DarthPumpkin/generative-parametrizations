@@ -66,12 +66,13 @@ class MDN_Model(BaseModel):
         return outputs
 
     def save(self, file_path: Path):
-        torch.save(self.mdn.cpu().state_dict(), file_path.as_posix())
+        file_path.parent.mkdir(exist_ok=True, parents=True)
+        torch.save(self.mdn.cpu().state_dict(), file_path)
         if self.device is not None and self.device.type != 'cpu':
             self.mdn.cuda()
 
     def load(self, file_path: Path):
-        state_dict = torch.load(file_path.as_posix())
+        state_dict = torch.load(file_path)
         self.mdn.load_state_dict(state_dict)
         if self.device is not None:
             self.mdn = self.mdn.to(self.device)
