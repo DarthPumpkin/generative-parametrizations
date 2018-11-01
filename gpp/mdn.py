@@ -35,10 +35,11 @@ class MDN(nn.Module):
 
 
 def mdn_loss(pi, mu, sig2, y):
-    pi = pi.reshape(1, -1)
-    mu = mu.reshape(1, -1)
-    sig2 = sig2.reshape(1, -1)
-    y = y.reshape(-1, 1)
+    """pi, mu, sig2: (batch_size x n_outputs x n_components), y: (batch_size x n_outputs)
+    return: scalar"""
+    n, m, k = pi.shape
+    pi, mu, sig2 = [z.reshape(n * m, k) for z in (pi, mu, sig2)]
+    y = y.reshape(n * m, 1)
     likelihoods = _gmm_neg_log_likelihood(pi, mu, sig2, y)
     return torch.mean(likelihoods)
 
@@ -60,7 +61,8 @@ def sample_gmm(pi: np.ndarray, mu: np.ndarray, sig2: np.ndarray) -> np.ndarray:
 
 
 def _gmm_neg_log_likelihood(pi, mu, sig2, y):
-    """pi: 1xK, mu: 1xK, sig2: 1xK, y: Nx1"""
+    """pi: NxK, mu: NxK, sig2: NxK, y: Nx1
+    return: N"""
     exponent = -0.5 * (y - mu) ** 2 / sig2  # NxK
     densities = _normalization_factor * (torch.exp(exponent) / torch.sqrt(sig2))
     density = torch.sum(pi * densities, dim=-1)
