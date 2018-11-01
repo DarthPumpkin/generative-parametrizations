@@ -20,29 +20,45 @@ class MDN_Model(BaseModel):
         self.mdn = self.mdn.to(device)
         self.device = device
 
-    def train(self, episodes: Sequence[Tuple[np.ndarray]], epochs=None):
+    def train(self, episodes: Sequence[Tuple[np.ndarray]], epochs: int=None, batch_size: int=None):
+
         if not epochs:
             raise ValueError("Missing required kwarg: epochs")
+
+        if not batch_size:
+            batch_size = int(1e20)
+
         state_size, action_size = episodes[0][0].shape[1], episodes[0][1].shape[1]
         self._check_input_sizes(action_size, state_size)
         x_array, y_array = merge_episodes(episodes)
         optimizer = torch.optim.Adam(self.mdn.parameters())
 
-        x_variable = torch.from_numpy(x_array.astype(np.float32)).to(self.device) # type: tensor.Tensor
-        y_variable = torch.from_numpy(y_array.astype(np.float32)).to(self.device) # type: tensor.Tensor
-        assert hasattr(y_variable, 'requires_grad')
-        y_variable.requires_grad = False
-
+        n_batches = int(np.ceil(1.0 * x_array.shape[0] / batch_size))
         losses = np.zeros(epochs)
+
         for t in range(epochs):
-            pi, mu, sig2 = self.mdn(x_variable)
-            loss = mdn_loss(pi, mu, sig2, y_variable)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            losses[t] = loss.data.item()
-            if t % 50 == 0:
-                print(t, losses[t])
+
+            for batch in range(n_batches):
+
+                idx_lb = batch_size * batch
+                idx_up = min(batch_size * (batch + 1), x_array.shape[0])
+                x_batch = x_array[idx_lb:idx_up]
+                y_batch = y_array[idx_lb:idx_up]
+
+                x_variable = torch.from_numpy(x_batch.astype(np.float32)).to(self.device)  # type: tensor.Tensor
+                y_variable = torch.from_numpy(y_batch.astype(np.float32)).to(self.device)  # type: tensor.Tensor
+                assert hasattr(y_variable, 'requires_grad')
+                y_variable.requires_grad = False
+
+                pi, mu, sig2 = self.mdn(x_variable)
+                loss = mdn_loss(pi, mu, sig2, y_variable)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                losses[t] += 1.0 * loss.data.item() / x_batch.shape[0]
+
+            print(t, losses[t])
+
         return losses
 
     def forward_sim(self, action_sequences: np.ndarray, env: gym.Env):
