@@ -11,16 +11,17 @@ class MDN(nn.Module):
         super(MDN, self).__init__()
         self.n_inputs = n_inputs
         self.n_components = n_components
+        self.n_outputs = n_outputs
         self.h1 = nn.Sequential(
             nn.Linear(n_inputs, HIDDEN_UNITS),
             nn.Tanh()
         )
         self.out_pi = nn.Sequential(
-            nn.Linear(HIDDEN_UNITS, (n_outputs, n_components)),
+            nn.Linear(HIDDEN_UNITS, n_outputs * n_components),
             nn.Softmax(dim=-1)
         )
-        self.out_mu = nn.Linear(HIDDEN_UNITS, (n_outputs, n_components))
-        self.out_sig2 = nn.Linear(HIDDEN_UNITS, (n_outputs, n_components))
+        self.out_mu = nn.Linear(HIDDEN_UNITS, n_outputs * n_components)
+        self.out_sig2 = nn.Linear(HIDDEN_UNITS, n_outputs * n_components)
 
     def forward(self, x: torch.Tensor) -> (torch.Tensor, torch.Tensor, torch.Tensor):
         """x: tensor (batch_size x n_inputs)
@@ -29,10 +30,15 @@ class MDN(nn.Module):
         pi = self.out_pi(h1)
         mu = self.out_mu(h1)
         sig2 = torch.exp(self.out_sig2(h1))
-        return pi, mu, sig2
+        shape = (x.shape[0], self.n_outputs, self.n_components)
+        return tuple([z.reshape(shape) for z in (pi, mu, sig2)])
 
 
 def mdn_loss(pi, mu, sig2, y):
+    pi = pi.reshape(1, -1)
+    mu = mu.reshape(1, -1)
+    sig2 = sig2.reshape(1, -1)
+    y = y.reshape(-1, 1)
     likelihoods = _gmm_neg_log_likelihood(pi, mu, sig2, y)
     return torch.mean(likelihoods)
 
