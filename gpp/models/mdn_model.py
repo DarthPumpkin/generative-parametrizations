@@ -13,9 +13,12 @@ from ..mdn import MDN, sample_gmm, mdn_loss
 
 
 class MDN_Model(BaseModel):
-    def __init__(self, n_inputs, n_components, np_random=None):
+
+    def __init__(self, n_inputs, n_outputs, n_components, np_random=None, device=torch.device("cpu")):
         super().__init__(np_random=np_random)
-        self.mdn = MDN(n_inputs, n_components)
+        self.mdn = MDN(n_inputs, n_outputs, n_components)
+        self.mdn = self.mdn.to(device)
+        self.device = device
 
     def train(self, episodes: Sequence[Tuple[np.ndarray]], epochs=None):
         if not epochs:
@@ -24,9 +27,9 @@ class MDN_Model(BaseModel):
         self._check_input_sizes(action_size, state_size)
         x_array, y_array = merge_episodes(episodes)
         optimizer = torch.optim.Adam(self.mdn.parameters())
-        x_variable = torch.from_numpy(x_array.astype(np.float32))
-        y_variable = torch.from_numpy(y_array.astype(np.float32)) # type: tensor.Tensor
 
+        x_variable = torch.from_numpy(x_array.astype(np.float32)).to(self.device) # type: tensor.Tensor
+        y_variable = torch.from_numpy(y_array.astype(np.float32)).to(self.device) # type: tensor.Tensor
         assert hasattr(y_variable, 'requires_grad')
         y_variable.requires_grad = False
 
@@ -48,29 +51,30 @@ class MDN_Model(BaseModel):
         state_size, = curr_state.shape
         self._check_input_sizes(state_size, action_size)
         outputs = np.zeros((n_sequences, T, state_size))
-        action_sequences = torch.Tensor(action_sequences)
-        action_sequences.requires_grad = False
+        action_sequences = torch.Tensor(action_sequences).to(self.device)
         curr_state = np.repeat([curr_state], n_sequences, axis=0)
-        curr_state = torch.Tensor(curr_state)  # n_sequences x state_size
-        assert hasattr(curr_state, 'requires_grad')
-        curr_state.requires_grad = False
-        for t in range(T):
-            input_ = torch.cat([curr_state, action_sequences[:, t, :]], dim=1)
-            pi, mu, sig2 = [x.data.numpy() for x in self.mdn.forward(input_)]
-            curr_state = sample_gmm(pi, mu, sig2)
-            outputs[:, t, :] = curr_state
+        curr_state = torch.Tensor(curr_state).to(self.device)  # n_sequences x state_size
+
+        with torch.no_grad():
+            for t in range(T):
+                input_ = torch.cat([curr_state, action_sequences[:, t, :]], dim=1)
+                pi, mu, sig2 = [x.cpu().data.numpy() for x in self.mdn.forward(input_)]
+                curr_state = sample_gmm(pi, mu, sig2)
+                outputs[:, t, :] = curr_state
+                curr_state = torch.Tensor(curr_state).to(self.device)
+
         return outputs
 
     def save(self, file_path: Path):
-        import pickle
-        with open(file_path, 'wb') as f:
-            pickle.dump(self.mdn.state_dict(), f)
+        torch.save(self.mdn.cpu().state_dict(), file_path.as_posix())
+        if self.device is not None and self.device.type != 'cpu':
+            self.mdn.cuda()
 
     def load(self, file_path: Path):
-        import pickle
-        with open(file_path, 'rb') as f:
-            state_dict = pickle.load(f)
-            self.mdn.load_state_dict(state_dict)
+        state_dict = torch.load(file_path.as_posix())
+        self.mdn.load_state_dict(state_dict)
+        if self.device is not None:
+            self.mdn = self.mdn.to(self.device)
 
     def _check_input_sizes(self, action_size, state_size):
         if action_size + state_size != self.mdn.n_inputs:
