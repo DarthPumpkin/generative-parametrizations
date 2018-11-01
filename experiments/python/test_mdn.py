@@ -9,11 +9,13 @@ import numpy as np
 import _gpp
 from gpp.models import MDN_Model
 from gpp.mpc import MPC
+from gpp.dataset import EnvDataset
 
-TRAINING_EPOCHS = 200
-N_EPISODES = 1000
-EPISODE_LENGTH = 200
-OVERWRITE_EXISTING = True
+BATCH_SIZE = 16
+TRAINING_EPOCHS = 50
+N_EPISODES = 200
+EPISODE_LENGTH = 40
+OVERWRITE_EXISTING = False
 
 MDN_COMPONENTS = 5
 MPC_HORIZON = 20
@@ -38,7 +40,9 @@ if __name__ == '__main__':
     n_outputs = raw_env.observation_space.low.size
 
     model = MDN_Model(n_inputs, n_outputs, MDN_COMPONENTS, np_random=np_random, device=device)
+
     model_path = Path('../out/tmp_mdn_model.pkl')
+    data_path = Path('../out/tmp_mdn_data.pkl')
 
     do_train = True
     if model_path.exists():
@@ -53,22 +57,25 @@ if __name__ == '__main__':
 
     if do_train:
 
-        print('Generating data...')
-        episodes = []
-        for e in range(N_EPISODES):
-            obs = env.reset()
-            actions = np.zeros((EPISODE_LENGTH,) + raw_env.action_space.shape)
-            states = np.zeros((EPISODE_LENGTH + 1,) + raw_env.observation_space.shape)
-            states[0] = obs
-            for s in range(EPISODE_LENGTH):
-                rand_action = raw_env.action_space.sample()
-                obs, rewards, dones, info = env.step(rand_action)
-                states[s+1] = obs
-                actions[s] = rand_action
-            episodes.append((states, actions))
+        do_generate = False
+        dataset = EnvDataset(env)
+        if data_path.exists():
+            print('Loading data...')
+            dataset.load(data_path)
+            if dataset.episodes != N_EPISODES or dataset.episode_length != EPISODE_LENGTH:
+                print('Existing data is not compatible with the desired parameters.')
+                do_generate = True
+        else:
+            do_generate = True
+
+        if do_generate:
+            print('Generating data...')
+            dataset.generate(N_EPISODES, EPISODE_LENGTH)
+            dataset.save(data_path)
+        episodes = dataset.data
 
         print('Training...')
-        losses = model.train(episodes, TRAINING_EPOCHS)
+        losses = model.train(episodes, TRAINING_EPOCHS, batch_size=BATCH_SIZE)
 
         print('Saving model...')
         model.save(model_path)
