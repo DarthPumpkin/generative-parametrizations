@@ -7,7 +7,7 @@ _normalization_factor = float(1.0 / np.sqrt(2.0 * np.pi))
 
 
 class MDN(nn.Module):
-    def __init__(self, n_inputs, n_components):
+    def __init__(self, n_inputs, n_outputs, n_components):
         super(MDN, self).__init__()
         self.n_inputs = n_inputs
         self.n_components = n_components
@@ -16,15 +16,15 @@ class MDN(nn.Module):
             nn.Tanh()
         )
         self.out_pi = nn.Sequential(
-            nn.Linear(HIDDEN_UNITS, n_components),
+            nn.Linear(HIDDEN_UNITS, (n_outputs, n_components)),
             nn.Softmax(dim=-1)
         )
-        self.out_mu = nn.Linear(HIDDEN_UNITS, n_components)
-        self.out_sig2 = nn.Linear(HIDDEN_UNITS, n_components)
+        self.out_mu = nn.Linear(HIDDEN_UNITS, (n_outputs, n_components))
+        self.out_sig2 = nn.Linear(HIDDEN_UNITS, (n_outputs, n_components))
 
     def forward(self, x: torch.Tensor) -> (torch.Tensor, torch.Tensor, torch.Tensor):
         """x: tensor (batch_size x n_inputs)
-        :return: tensors pi, mu and sigma squared, each of size (batch_size x n_components)"""
+        :return: tensors pi, mu and sigma squared, each of size (batch_size x n_outputs x n_components)"""
         h1 = self.h1(x)
         pi = self.out_pi(h1)
         mu = self.out_mu(h1)
