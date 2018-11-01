@@ -1,13 +1,15 @@
+from pathlib import Path
 from typing import Sequence, Tuple
 
 import gym as gym
 import numpy as np
 import torch
+from torch import tensor
 
 from gpp.models.utilities import merge_episodes
 from . import BaseModel
 from .utilities import get_observations
-from ..mdn import MDN, sample_gmm
+from ..mdn import MDN, sample_gmm, mdn_loss
 
 
 class MDN_Model(BaseModel):
@@ -18,13 +20,27 @@ class MDN_Model(BaseModel):
     def train(self, episodes: Sequence[Tuple[np.ndarray]], epochs=None):
         if not epochs:
             raise ValueError("Missing required kwarg: epochs")
-        state_size, action_size = episodes[0][0].shape[0], episodes[0][1].shape[0]
+        state_size, action_size = episodes[0][0].shape[1], episodes[0][1].shape[1]
         self._check_input_sizes(action_size, state_size)
         x_array, y_array = merge_episodes(episodes)
         optimizer = torch.optim.Adam(self.mdn.parameters())
         x_variable = torch.from_numpy(x_array.astype(np.float32))
-        y_variable = torch.from_numpy(y_array.astype(np.float32), requires_grad=False)
-        # for
+        y_variable = torch.from_numpy(y_array.astype(np.float32)) # type: tensor.Tensor
+
+        assert hasattr(y_variable, 'requires_grad')
+        y_variable.requires_grad = False
+
+        losses = np.zeros(epochs)
+        for t in range(epochs):
+            pi, mu, sig2 = self.mdn(x_variable)
+            loss = mdn_loss(pi, mu, sig2, y_variable)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            losses[t] = loss.data.item()
+            if t % 50 == 0:
+                print(t, losses[t])
+        return losses
 
     def forward_sim(self, action_sequences: np.ndarray, env: gym.Env):
         curr_state = get_observations(env)
@@ -32,9 +48,12 @@ class MDN_Model(BaseModel):
         state_size, = curr_state.shape
         self._check_input_sizes(state_size, action_size)
         outputs = np.zeros((n_sequences, T, state_size))
-        action_sequences = torch.Tensor(action_sequences, requires_grad=False)
+        action_sequences = torch.Tensor(action_sequences)
+        action_sequences.requires_grad = False
         curr_state = np.repeat([curr_state], n_sequences, axis=0)
-        curr_state = torch.Tensor(curr_state, requires_grad=False)  # n_sequences x state_size
+        curr_state = torch.Tensor(curr_state)  # n_sequences x state_size
+        assert hasattr(curr_state, 'requires_grad')
+        curr_state.requires_grad = False
         for t in range(T):
             input_ = torch.cat([curr_state, action_sequences[:, t, :]], dim=1)
             pi, mu, sig2 = [x.data.numpy() for x in self.mdn.forward(input_)]
@@ -42,7 +61,18 @@ class MDN_Model(BaseModel):
             outputs[:, t, :] = curr_state
         return outputs
 
+    def save(self, file_path: Path):
+        import pickle
+        with open(file_path, 'wb') as f:
+            pickle.dump(self.mdn.state_dict(), f)
+
+    def load(self, file_path: Path):
+        import pickle
+        with open(file_path, 'rb') as f:
+            state_dict = pickle.load(f)
+            self.mdn.load_state_dict(state_dict)
+
     def _check_input_sizes(self, action_size, state_size):
         if action_size + state_size != self.mdn.n_inputs:
-            raise ValueError(f"Actions and state have dimension {action_size} and {state_size} respectively"
+            raise ValueError(f"Actions and state have dimension {action_size} and {state_size} respectively "
                              f"but MDN was initialized to {self.mdn.n_inputs} inputs")

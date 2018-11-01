@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Sequence, Tuple
 
 import gym
@@ -24,4 +25,12 @@ class BaseModel:
         """Trains the model on a given sequence of episodes
         :param episodes: sequence of episodes. Every episode is a tuple (state_sequence, action_sequence) of sizes (n
         + 1 x state_size) and (n x action_size), respectively"""
+        raise NotImplementedError
+
+    def load(self, file_path: Path):
+        """TODO: Add documentation"""
+        raise NotImplementedError
+
+    def save(self, file_path: Path):
+        """TODO: Add documentation"""
         raise NotImplementedError
