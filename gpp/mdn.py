@@ -43,12 +43,14 @@ def sample_gmm(pi: np.ndarray, mu: np.ndarray, sig2: np.ndarray) -> np.ndarray:
     :param mu: (n x k) means
     :param sig2: (n x k) variances
     :return: (n) samples"""
-    n, k = pi.shape
+    other_dims, k = pi.shape[:-1], pi.shape[-1]
+    n = np.prod(other_dims)
+    pi, mu, sig2 = [x.reshape(n, k) for x in (pi, mu, sig2)]
     k_sampled = _gumbel_sample(pi)
     mu_sampled = mu[np.arange(n), k_sampled]
     sig2_sampled = sig2[np.arange(n), k_sampled]
     gmm_sampled = np.random.randn(n) * sig2_sampled + mu_sampled
-    return gmm_sampled
+    return gmm_sampled.reshape(*other_dims)
 
 
 def _gmm_neg_log_likelihood(pi, mu, sig2, y):
