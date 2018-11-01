@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import Sequence, Tuple
 
 import gym as gym
 import numpy as np
@@ -15,7 +15,7 @@ class MDN_Model(BaseModel):
         super().__init__(np_random=np_random)
         self.mdn = MDN(n_inputs, n_components)
 
-    def train(self, episodes: Sequence[(np.ndarray, np.ndarray)], epochs=None):
+    def train(self, episodes: Sequence[Tuple[np.ndarray]], epochs=None):
         if not epochs:
             raise ValueError("Missing required kwarg: epochs")
         state_size, action_size = episodes[0][0].shape[0], episodes[0][1].shape[0]
