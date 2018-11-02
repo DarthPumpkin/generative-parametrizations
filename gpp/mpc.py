@@ -1,4 +1,5 @@
 import gym
+from gym.spaces import Discrete, Box
 import numpy as np
 
 from .reward_functions import RewardFunction
@@ -25,8 +26,14 @@ class MPC:
         npr = self.np_random
         action_space = self.env.action_space
 
-        all_actions = npr.uniform(action_space.low, action_space.high,
-                                  (self.n_action_sequences, self.horizon, action_space.shape[0]))
+        if isinstance(action_space, Box):
+            all_actions = npr.uniform(action_space.low, action_space.high,
+                                      (self.n_action_sequences, self.horizon, action_space.shape[0]))
+        elif isinstance(action_space, Discrete):
+            all_actions = npr.randint(0, action_space.n,
+                                      (self.n_action_sequences, self.horizon))
+        else:
+            raise NotImplementedError
 
         all_states = self.model.forward_sim(all_actions, self.env)
 
