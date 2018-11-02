@@ -1,30 +1,37 @@
 import gym
-import numpy as np
 from time import sleep
-from gym.envs.robotics import FetchPickAndPlaceSphereEnv
 
 import _gpp
 from gpp.mpc import MPC
-from gpp.models import DummyModel, PendulumSim
+from gpp.models import PendulumSim, CartPoleSim
 
 
 if __name__ == '__main__':
 
-    # env = gym.make('FetchPickAndPlaceDense-v1')
-    env = gym.make('Pendulum-v0')
-    raw_env = env.unwrapped # type: FetchPickAndPlaceSphereEnv
+    # env = gym.make('Pendulum-v0')
+    env = gym.make('CartPole-v0')
+
+    raw_env = env.unwrapped
     raw_env.seed(42)
     np_random = raw_env.np_random
 
-    model = PendulumSim(np_random)
+    # model = PendulumSim(np_random)
+    model = CartPoleSim(np_random)
 
-    horizon = 20
+    horizon = 100
     n_sequences = 2000
     controller = MPC(env, model, horizon, n_sequences, np_random)
 
-    obs = env.reset()
-    for _ in range(20000):
-        env.render()
-        action = controller.get_action()
-        obs, rewards, dones, info = env.step(action)
-        sleep(1. / 60)
+    try:
+        ep_length = env.spec.max_episode_steps
+    except AttributeError as e:
+        print('Current environment doesn\'t specify the maximum length for each episode. Using default value.')
+        ep_length = 200
+
+    for e in range(2000):
+        env.reset()
+        for s in range(ep_length):
+            env.render()
+            action = controller.get_action()
+            obs, rewards, dones, info = env.step(action)
+            sleep(1. / 60)
