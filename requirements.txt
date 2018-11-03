@@ -1,0 +1,8 @@
+git+https://github.com/carlo-/gym@f7725cd14782b0d410e3b59696663e099ae8ea92
+matplotlib
+numpy
+scipy
+stable-baselines
+tensorboard
+tensorflow
+torch
