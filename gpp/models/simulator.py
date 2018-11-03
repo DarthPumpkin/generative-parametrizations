@@ -3,24 +3,30 @@ import numpy as np
 from gym.envs.classic_control import PendulumEnv, CartPoleEnv
 
 from . import BaseModel
-from .utilities import get_observation_space, get_observations
+from .utilities import get_observation_space
 
 
 class PendulumSim(BaseModel):
 
-    def forward_sim(self, action_sequences: np.ndarray, env: gym.Env):
+    def __init__(self, env: gym.Env, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-        raw_env = env.unwrapped # type: PendulumEnv
+        raw_env = env.unwrapped  # type: PendulumEnv
         if not isinstance(raw_env, PendulumEnv):
             raise ValueError('PendulumSim only works with PendulumEnv or subclasses!')
 
-        obs_space = get_observation_space(env)
+        self.obs_space = get_observation_space(env)
+        self.env = env
+        self.raw_env = raw_env
+
+    def forward_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray):
+
         n_sequences, horizon, _ = action_sequences.shape
-        all_states = np.zeros((n_sequences, horizon+1) + obs_space.shape)
+        all_states = np.zeros((n_sequences, horizon+1) + self.obs_space.shape)
+        raw_env = self.raw_env
 
         # get initial state
-        init_state = get_observations(env)
-        all_states[:, 0] = np.tile(init_state, (n_sequences, 1))
+        all_states[:, 0] = np.tile(initial_state, (n_sequences, 1))
 
         # internal states
         last_internal_states = np.tile(raw_env.state, (n_sequences, 1))
@@ -51,19 +57,25 @@ class PendulumSim(BaseModel):
 
 class CartPoleSim(BaseModel):
 
-    def forward_sim(self, action_sequences: np.ndarray, env: gym.Env):
+    def __init__(self, env: gym.Env, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-        raw_env = env.unwrapped # type: CartPoleEnv
+        raw_env = env.unwrapped  # type: CartPoleEnv
         if not isinstance(raw_env, CartPoleEnv):
             raise ValueError('CartPoleSim only works with CartPoleEnv or subclasses!')
 
-        obs_space = get_observation_space(env)
+        self.obs_space = get_observation_space(env)
+        self.env = env
+        self.raw_env = raw_env
+
+    def forward_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray):
+
         n_sequences, horizon = action_sequences.shape
-        all_states = np.zeros((n_sequences, horizon+1) + obs_space.shape)
+        all_states = np.zeros((n_sequences, horizon+1) + self.obs_space.shape)
+        raw_env = self.raw_env
 
         # get initial state
-        init_state = get_observations(env)
-        all_states[:, 0] = np.tile(init_state, (n_sequences, 1))
+        all_states[:, 0] = np.tile(initial_state, (n_sequences, 1))
 
         # internal states
         last_internal_states = np.tile(raw_env.state, (n_sequences, 1))

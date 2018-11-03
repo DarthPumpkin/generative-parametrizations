@@ -15,8 +15,8 @@ if __name__ == '__main__':
     raw_env.seed(42)
     np_random = raw_env.np_random
 
-    # model = PendulumSim(np_random)
-    model = CartPoleSim(np_random)
+    # model = PendulumSim(env, np_random=np_random)
+    model = CartPoleSim(env, np_random=np_random)
 
     horizon = 100
     n_sequences = 2000
@@ -29,9 +29,9 @@ if __name__ == '__main__':
         ep_length = 200
 
     for e in range(2000):
-        env.reset()
+        obs = env.reset()
         for s in range(ep_length):
             env.render()
-            action = controller.get_action()
+            action = controller.get_action(obs)
             obs, rewards, dones, info = env.step(action)
             sleep(1. / 60)

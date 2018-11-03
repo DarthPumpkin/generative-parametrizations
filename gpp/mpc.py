@@ -21,7 +21,7 @@ class MPC:
         self.horizon = horizon
         self.model = model
 
-    def get_action(self):
+    def get_action(self, initial_state: np.ndarray):
 
         npr = self.np_random
         action_space = self.env.action_space
@@ -35,7 +35,7 @@ class MPC:
         else:
             raise NotImplementedError
 
-        all_states = self.model.forward_sim(all_actions, self.env)
+        all_states = self.model.forward_sim(all_actions, initial_state.copy())
 
         if hasattr(self.env.unwrapped, 'goal'):
             goal = self.env.unwrapped.goal

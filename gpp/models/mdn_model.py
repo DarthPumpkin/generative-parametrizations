@@ -61,8 +61,8 @@ class MDN_Model(BaseModel):
 
         return losses
 
-    def forward_sim(self, action_sequences: np.ndarray, env: gym.Env):
-        curr_state = get_observations(env)
+    def forward_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray):
+        curr_state = initial_state
         n_sequences, T, action_size = action_sequences.shape
         state_size, = curr_state.shape
         self._check_input_sizes(state_size, action_size)

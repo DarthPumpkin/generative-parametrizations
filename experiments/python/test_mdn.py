@@ -86,6 +86,6 @@ if __name__ == '__main__':
 
     for _ in range(20000):
         env.render()
-        action = controller.get_action()
+        action = controller.get_action(obs)
         obs, rewards, dones, info = env.step(action)
         sleep(1. / 60)
