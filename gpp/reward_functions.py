@@ -4,7 +4,8 @@ import numpy as np
 
 try:
     from gym.envs.robotics import FetchEnv
-except ImportError as e:
+    raise gym.error.DependencyNotInstalled
+except (ImportError, gym.error.DependencyNotInstalled) as e:
     FetchEnv = None
     print('WARNING: Could not import robotics environments! MuJoCo might not be installed.')
 
