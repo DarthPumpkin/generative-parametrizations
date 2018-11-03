@@ -8,13 +8,13 @@ from gpp.models.utilities import get_observations
 
 
 def test(env: gym.Env, controller_fun, test_runs: int, mass_mean, mass_stdev, episode_length=200, embed_knowledge=False,
-         perfect_knowledge=False):
+         perfect_knowledge=False, seed=42):
 
     raw_env = env.unwrapped
     assert isinstance(raw_env, GaussianPendulumEnv)
 
     raw_env.configure(
-        seed=42,
+        seed=seed,
         mass_mean=mass_mean,
         mass_stdev=mass_stdev,
         embed_knowledge=embed_knowledge,
@@ -23,7 +23,7 @@ def test(env: gym.Env, controller_fun, test_runs: int, mass_mean, mass_stdev, ep
     )
 
     # make test set (generate initial states)
-    np.random.seed(42)
+    np.random.seed(seed)
     initial_states = np.random.uniform([0, -raw_env.max_speed], [2 * np.pi, raw_env.max_speed], size=(test_runs, 2))
 
     # run controller_fun on environment

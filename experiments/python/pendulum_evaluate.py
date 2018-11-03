@@ -1,5 +1,8 @@
 from pathlib import Path
+from timeit import default_timer as timer
 
+import numpy as np
+from joblib import Parallel, delayed
 import gym
 import pandas as pd
 # noinspection PyUnresolvedReferences
@@ -16,7 +19,7 @@ MODEL_PATH = "../out/tmp_mdn_model.pkl"
 SAVE_PATH = "../out/tmp_mdn_model.csv"
 
 
-if __name__ == '__main__':
+def _evaluation_worker(seed, runs):
 
     # init environment
     env = gym.make('GaussianPendulum-v0')
@@ -28,11 +31,35 @@ if __name__ == '__main__':
     def next_mdn_mpc_action(obs):
         return mpc.get_action(obs)
 
-    result_df = pd.DataFrame(columns=("mass", "mass_mean", "mass_std", "reward"))
+    results = []
     for mean, std in zip(MASS_MEANS, MASS_STDS):
-        masses, rewards = run_model_on_pendulum.test(env, next_mdn_mpc_action, TEST_RUNS, mean, std)
+        masses, rewards = run_model_on_pendulum.test(env, next_mdn_mpc_action, runs, mean, std, seed=seed)
         t, = masses.shape
-        new_df = pd.DataFrame({"mass": masses, "mass_mean": [mean] * t, "mass_std": [std] * t, "reward": rewards})
-        result_df = result_df.append(new_df)
+        results.append({"mass": masses, "mass_mean": [mean] * t, "mass_std": [std] * t, "reward": rewards})
 
-    result_df.to_csv(SAVE_PATH)
+    return results
+
+
+def run_evaluation(workers=1, seed=42):
+
+    tick_t = timer()
+    print('Running evaluation...')
+
+    if workers > 1:
+        parallel = Parallel(n_jobs=workers, backend='multiprocessing', verbose=5)
+        runs_per_worker = np.ones(workers).astype(np.int) * (TEST_RUNS // workers)
+        runs_per_worker[-1] += TEST_RUNS % workers
+        results = parallel(delayed(_evaluation_worker)(seed + i, runs_per_worker[i]) for i in range(workers))
+        results = sum(results, [])
+    else:
+        results = _evaluation_worker(seed, TEST_RUNS)
+
+    tock_t = timer()
+    print("Done. Took ~{}s".format(round(tock_t - tick_t)))
+
+    df = pd.DataFrame(results)
+    df.to_csv(SAVE_PATH)
+
+
+if __name__ == '__main__':
+    run_evaluation(workers=7)
