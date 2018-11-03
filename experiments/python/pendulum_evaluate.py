@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import gym
 import pandas as pd
 # noinspection PyUnresolvedReferences
 import _gpp
@@ -16,19 +17,22 @@ SAVE_PATH = "../out/tmp_mdn_model.csv"
 
 
 if __name__ == '__main__':
-    # load model
-    path = Path(MODEL_PATH)
 
-    mdn = MDN_Model.load(path)
-    mpc = MPC()
+    # init environment
+    env = gym.make('GaussianPendulum-v0')
+
+    # load model
+    mdn = MDN_Model.load(Path(MODEL_PATH))
+    mpc = MPC(env, mdn, horizon=20, n_action_sequences=2000, np_random=None)
 
     def next_mdn_mpc_action(obs):
-        return mdn.forward_sim(action.reshape(1, 1, -1), obs).reshape(-1)
+        return mpc.get_action(obs)
 
     result_df = pd.DataFrame(columns=("mass", "mass_mean", "mass_std", "reward"))
     for mean, std in zip(MASS_MEANS, MASS_STDS):
-        masses, rewards = run_model_on_pendulum.test(next_mdn_mpc_action, TEST_RUNS, mean, std)
+        masses, rewards = run_model_on_pendulum.test(env, next_mdn_mpc_action, TEST_RUNS, mean, std)
         t, = masses.shape
-        result_df.append({"mass": masses, "mass_mean": [mean] * t, "mass_std": [std] * t, "reward": rewards})
+        new_df = pd.DataFrame({"mass": masses, "mass_mean": [mean] * t, "mass_std": [std] * t, "reward": rewards})
+        result_df = result_df.append(new_df)
 
     result_df.to_csv(SAVE_PATH)
