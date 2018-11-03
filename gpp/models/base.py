@@ -27,7 +27,8 @@ class BaseModel:
         + 1 x state_size) and (n x action_size), respectively"""
         raise NotImplementedError
 
-    def load(self, file_path: Path):
+    @staticmethod
+    def load(file_path: Path):
         """TODO: Add documentation"""
         raise NotImplementedError
 

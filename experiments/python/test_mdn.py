@@ -50,7 +50,7 @@ if __name__ == '__main__':
         if OVERWRITE_EXISTING:
             print('Overwriting...')
         else:
-            model.load(model_path)
+            model = MDN_Model.load(model_path)
             do_train = False
     else:
         print('Existing model not found.')
