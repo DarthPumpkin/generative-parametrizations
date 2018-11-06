@@ -13,7 +13,7 @@ np.set_printoptions(precision=4, edgeitems=6, linewidth=100, suppress=True)
 
 # Hyperparameters for ConvVAE
 z_size = 32
-batch_size = 32
+batch_size = 256
 learning_rate = 0.0001
 kl_tolerance = 0.5
 
@@ -72,7 +72,6 @@ for epoch in range(NUM_EPOCH):
                                                                      vae.global_step,
                                                                      vae.train_op],
                                                                     feed)
-
 
         if epoch == 0 and idx == 0:
             train_loss_list.append(train_loss)

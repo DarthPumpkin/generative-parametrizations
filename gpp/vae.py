@@ -22,7 +22,7 @@ class ConvVAE(object):
         with tf.variable_scope('conv_vae', reuse=self.reuse):
             if not gpu_mode:
                 with tf.device('/cpu:0'):
-                    tf.logging.info('Model using cpu.')
+                    tf.logging.info('Model using cpux.')
                     self._build_graph()
             else:
                 tf.logging.info('Model using gpu.')
@@ -85,6 +85,7 @@ class ConvVAE(object):
                 self.lr = tf.Variable(self.learning_rate, trainable=False)
                 self.optimizer = tf.train.AdamOptimizer(self.lr)
                 grads = self.optimizer.compute_gradients(self.loss)
+                tf.clip_by_global_norm(grads, 4)
                 # can potentially clip gradients here.
 
                 self.train_op = self.optimizer.apply_gradients(
