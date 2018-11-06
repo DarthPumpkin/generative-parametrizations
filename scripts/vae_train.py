@@ -18,7 +18,7 @@ learning_rate = 0.0001
 kl_tolerance = 0.5
 
 # Parameters for training
-NUM_EPOCH = 10
+NUM_EPOCH = 100
 DATA_DIR = "record"
 IMG_OUTPUT_DIR = './out'
 
