@@ -13,12 +13,12 @@ np.set_printoptions(precision=4, edgeitems=6, linewidth=100, suppress=True)
 
 # Hyperparameters for ConvVAE
 z_size = 32
-batch_size = 256
+batch_size = 128
 learning_rate = 0.0001
 kl_tolerance = 0.5
 
 # Parameters for training
-NUM_EPOCH = 100
+NUM_EPOCH = 10
 DATA_DIR = "record"
 IMG_OUTPUT_DIR = './out'
 
@@ -105,7 +105,7 @@ for epoch in range(NUM_EPOCH):
 
     batch_z = vae.encode(x_test[:batch_size])
     reconstruct = vae.decode(batch_z)
-    # reconstruct = (reconstruct * 255).astype(np.uint8)
+    reconstruct = (reconstruct * 255).astype(np.uint8)
     # reconstruct = (reconstruct * 127.5 + 127.5).astype(np.uint8)
     im2print = 10
 
