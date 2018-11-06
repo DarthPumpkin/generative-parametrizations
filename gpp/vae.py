@@ -34,18 +34,23 @@ class ConvVAE(object):
         self.g = tf.Graph()
         with self.g.as_default():
             if self.mnist:
-                self.x = tf.placeholder(tf.float32, shape=[None, 28, 28])
+                self.x = tf.placeholder(tf.float32, shape=[None, 28, 28, 1])
                 n_filters = 28 // 2
             else:
                 self.x = tf.placeholder(tf.float32, shape=[None, 32, 32, 3])
                 n_filters = 32 // 2
             # Encoder
 
-            h = tf.layers.conv2d(self.x, n_filters, 4, strides=2, activation=tf.nn.relu, name="enc_conv1")
-            h = tf.layers.conv2d(h, 2*n_filters, 4, strides=2, activation=tf.nn.relu, name="enc_conv2")
-            h = tf.layers.conv2d(h, 4*n_filters, 4, strides=2, activation=tf.nn.relu, name="enc_conv3")
-            # h = tf.layers.conv2d(h, 128, 4, strides=2, activation=tf.nn.relu, name="enc_conv4")
-            h = tf.reshape(h, [-1, 2 * 2 * 4*n_filters])
+            h = tf.layers.conv2d(self.x, n_filters, 2, strides=2, activation=tf.nn.relu, name="enc_conv1")
+            print(h.get_shape().as_list())
+            h = tf.layers.conv2d(h, 2*n_filters, 2, strides=2, activation=tf.nn.relu, name="enc_conv2")
+            print(h.get_shape().as_list())
+            h = tf.layers.conv2d(h, 4*n_filters, 2, strides=2, activation=tf.nn.relu, name="enc_conv3")
+            print(h.get_shape().as_list())
+            h = tf.layers.conv2d(h, 128, 2, strides=2, activation=tf.nn.relu, name="enc_conv4")
+            print(h.get_shape().as_list())
+            h = tf.reshape(h, [-1, 2 * 2 * 8*n_filters])
+            print(h.get_shape().as_list())
 
             # VAE
             self.mu = tf.layers.dense(h, self.z_size, name="enc_fc_mu")
@@ -54,18 +59,26 @@ class ConvVAE(object):
             self.epsilon = tf.random_normal([self.batch_size, self.z_size])
 
             self.z = self.mu + self.sigma * self.epsilon
-
             # Decoder
-            h = tf.layers.dense(self.z, 2 * 2 * 4*n_filters, name="dec_fc")
-            h = tf.reshape(h, [-1, 1, 1, 2 * 2 * 4*n_filters])
+            h = tf.layers.dense(self.z, 2 * 2 * 4 * n_filters, name="dec_fc")
+            print(h.get_shape().as_list())
+            h = tf.reshape(h, [-1, 1, 1, 2 * 2 * 4 * n_filters])
+            print(h.get_shape().as_list())
             # h = tf.layers.conv2d_transpose(h, 64, 5, strides=2, activation=tf.nn.relu, name="dec_deconv1")
-            h = tf.layers.conv2d_transpose(h, 2*n_filters, 5, strides=2, activation=tf.nn.relu, name="dec_deconv1")
-            h = tf.layers.conv2d_transpose(h, n_filters, 6, strides=2, activation=tf.nn.relu, name="dec_deconv2")
-            # print(h.get_shape().as_list())
+            h = tf.layers.conv2d_transpose(h, 8*n_filters, 2, strides=2, activation=tf.nn.relu, name="dec_deconv1")
+            print(h.get_shape().as_list())
+            h = tf.layers.conv2d_transpose(h, 4*n_filters, 2, strides=2, activation=tf.nn.relu, name="dec_deconv2")
+            print(h.get_shape().as_list())
+            h = tf.layers.conv2d_transpose(h, 2*n_filters, 2, strides=2, activation=tf.nn.relu, name="dec_deconv3")
+            print(h.get_shape().as_list())
+            h = tf.layers.conv2d_transpose(h, 1*n_filters, 2, strides=2, activation=tf.nn.relu, name="dec_deconv4")
+            print(h.get_shape().as_list())
             if self.mnist:
-                self.y = tf.layers.conv2d_transpose(h, 3, 6, strides=2, activation=tf.nn.sigmoid, name="dec_deconv3")
+                self.y = tf.layers.conv2d_transpose(h, 1, 6, strides=2, activation=tf.nn.sigmoid, name="dec_deconv5")
             else:
-                self.y = tf.layers.conv2d_transpose(h, 1, 6, strides=2, activation=tf.nn.sigmoid, name="dec_deconv3")
+                self.y = tf.layers.conv2d_transpose(h, 3, 2, strides=2, activation=tf.nn.sigmoid, name="dec_deconv5")
+
+            print(self.y.get_shape().as_list())
 
             # train ops
             if self.is_training:
@@ -94,7 +107,7 @@ class ConvVAE(object):
                 self.lr = tf.Variable(self.learning_rate, trainable=False)
                 self.optimizer = tf.train.AdamOptimizer(self.lr)
                 grads = self.optimizer.compute_gradients(self.loss)
-                tf.clip_by_global_norm(grads, 4)
+                # tf.clip_by_global_norm(grads, 4)
                 # can potentially clip gradients here.
 
                 self.train_op = self.optimizer.apply_gradients(

@@ -1,7 +1,6 @@
 import os
 import numpy as np
-from keras.datasets import cifar10
-from keras.dataset import mnist
+from keras.datasets import cifar10, mnist
 import _gpp
 from tqdm import tqdm
 from gpp.vae import ConvVAE
@@ -14,7 +13,7 @@ np.set_printoptions(precision=4, edgeitems=6, linewidth=100, suppress=True)
 
 # Hyperparameters for ConvVAE
 z_size = 32
-batch_size = 128
+batch_size = 64
 learning_rate = 0.0001
 kl_tolerance = 0.5
 
@@ -27,10 +26,11 @@ model_save_path = "tf_vae"
 os.makedirs(model_save_path, exist_ok=True)
 os.makedirs(IMG_OUTPUT_DIR, exist_ok=True)
 
-mnist_data = True
+mnist_data = False
 
 if mnist_data:
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
+    dataset = x_train
 else:
     (x_train, y_train), (x_test, y_test) = cifar10.load_data()
     test_horses = np.where(y_test == 7)[0]
@@ -52,7 +52,7 @@ vae = ConvVAE(z_size=z_size,
               is_training=True,
               reuse=False,
               gpu_mode=False,
-              mnist = mnist_data)
+              mnist=mnist_data)
 
 # train loop:
 print("train", "step", "loss", "recon_loss", "kl_loss")
@@ -71,7 +71,6 @@ for epoch in range(NUM_EPOCH):
 
         obs = batch.astype(np.float) / 255.0
         # obs = (batch.astype(np.float) - 127.5) / 127.5
-
         feed = {vae.x: obs, }
 
         (train_loss, r_loss, kl_loss, train_step, _) = vae.sess.run([vae.loss,
@@ -87,8 +86,8 @@ for epoch in range(NUM_EPOCH):
             kl_loss_list.append(kl_loss)
 
         train_loss_list.append(train_loss_list[-1]*smoothing+train_loss*(1-smoothing))
-        r_loss_list.append(r_loss_list[-1]*smoothing+r_loss*(1-smoothing))
-        kl_loss_list.append(kl_loss_list[-1]*smoothing+kl_loss*(1-smoothing))
+        r_loss_list.append(r_loss_list[-1] * smoothing + r_loss * (1-smoothing))
+        kl_loss_list.append(kl_loss_list[-1] * smoothing + kl_loss*(1-smoothing))
         # if (train_step + 1) % 5000 == 0:
         #     vae.save_json("tf_vae/vae.json")
 
