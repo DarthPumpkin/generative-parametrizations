@@ -54,6 +54,8 @@ train_loss_list = []
 r_loss_list = []
 kl_loss_list = []
 
+smoothing = 0.9
+
 for epoch in range(NUM_EPOCH):
     np.random.shuffle(dataset)
     for idx in tqdm(range(num_batches)):
@@ -70,10 +72,16 @@ for epoch in range(NUM_EPOCH):
                                                                      vae.global_step,
                                                                      vae.train_op],
                                                                     feed)
-        train_loss_list.append(train_loss)
 
-        r_loss_list.append(r_loss)
-        kl_loss_list.append(kl_loss)
+
+        if epoch == 0 and idx == 0:
+            train_loss_list.append(train_loss)
+            r_loss_list.append(r_loss)
+            kl_loss_list.append(kl_loss)
+
+        train_loss_list.append(train_loss_list[-1]*smoothing+train_loss*(1-smoothing))
+        r_loss_list.append(r_loss_list[-1]*smoothing+r_loss*(1-smoothing))
+        kl_loss_list.append(kl_loss_list[-1]*smoothing+kl_loss*(1-smoothing))
         # if (train_step + 1) % 5000 == 0:
         #     vae.save_json("tf_vae/vae.json")
 
