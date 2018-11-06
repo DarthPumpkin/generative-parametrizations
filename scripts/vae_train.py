@@ -77,7 +77,7 @@ for epoch in range(NUM_EPOCH):
     # vae.save_json("tf_vae/vae.json")
 
     plt.plot(train_loss_list)
-    plt.savefig("train_loss_history.pdf", format="pdf")
+    plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_history.pdf', format="pdf")
 
     batch_z = vae.encode(x_test[:batch_size])
     reconstruct = vae.decode(batch_z)
