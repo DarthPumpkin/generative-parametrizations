@@ -47,10 +47,9 @@ vae = ConvVAE(z_size=z_size,
 # train loop:
 print("train", "step", "loss", "recon_loss", "kl_loss")
 train_step = train_loss = r_loss = kl_loss = None
+train_loss_list = []
 for epoch in range(NUM_EPOCH):
     np.random.shuffle(dataset)
-    epoch > 0 and print("Epoch: ", epoch, " step: ", (train_step + 1), " train loss: ", train_loss,
-                        " r loss: ", r_loss, " kl loss: ", kl_loss)
     for idx in tqdm(range(num_batches)):
         batch = dataset[idx * batch_size:(idx + 1) * batch_size]
 
@@ -65,11 +64,20 @@ for epoch in range(NUM_EPOCH):
                                                                      vae.global_step,
                                                                      vae.train_op],
                                                                     feed)
+        train_loss_list.append(train_loss)
         # if (train_step + 1) % 5000 == 0:
         #     vae.save_json("tf_vae/vae.json")
-
+    epoch_train_loss = np.mean(train_loss_list[-num_batches:])
+    epoch > 0 and print("Epoch: ", epoch,
+                        " step: ", (train_step + 1),
+                        " train loss: ", epoch_train_loss,
+                        " r loss: ", r_loss,
+                        " kl loss: ", kl_loss)
     # finished, final model:
     # vae.save_json("tf_vae/vae.json")
+
+    plt.plot(train_loss_list)
+    plt.savefig("train_loss_history.pdf", format="pdf")
 
     batch_z = vae.encode(x_test[:batch_size])
     print(batch_z)
