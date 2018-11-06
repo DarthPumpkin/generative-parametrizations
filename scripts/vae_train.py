@@ -14,7 +14,7 @@ np.set_printoptions(precision=4, edgeitems=6, linewidth=100, suppress=True)
 # Hyperparameters for ConvVAE
 z_size = 32
 batch_size = 128
-learning_rate = 0.0001
+learning_rate = 0.0001*0.001
 kl_tolerance = 0.5
 
 # Parameters for training
