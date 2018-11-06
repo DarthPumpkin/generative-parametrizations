@@ -101,7 +101,7 @@ class ConvVAE(object):
                 self.kl_loss = tf.maximum(self.kl_loss, self.kl_tolerance * self.z_size)
                 self.kl_loss = tf.reduce_mean(self.kl_loss)
 
-                self.loss = self.r_loss + self.kl_loss
+                self.loss = self.r_loss
 
                 # training
                 self.lr = tf.Variable(self.learning_rate, trainable=False)
