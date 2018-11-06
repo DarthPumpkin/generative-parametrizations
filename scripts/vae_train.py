@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from keras.datasets import cifar10
+from keras.dataset import mnist
 import _gpp
 from tqdm import tqdm
 from gpp.vae import ConvVAE
@@ -12,7 +13,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu syst
 np.set_printoptions(precision=4, edgeitems=6, linewidth=100, suppress=True)
 
 # Hyperparameters for ConvVAE
-z_size = 32*10
+z_size = 32
 batch_size = 128
 learning_rate = 0.0001
 kl_tolerance = 0.5
@@ -26,12 +27,18 @@ model_save_path = "tf_vae"
 os.makedirs(model_save_path, exist_ok=True)
 os.makedirs(IMG_OUTPUT_DIR, exist_ok=True)
 
-(x_train, y_train), (x_test, y_test) = cifar10.load_data()
-test_horses = np.where(y_test == 7)[0]
-x_test = x_test[test_horses]
-horses = np.where(y_train == 7)[0]
-# split into batches:
-dataset = x_train[horses]
+mnist_data = True
+
+if mnist_data:
+    (x_train, y_train), (x_test, y_test) = mnist.load_data()
+else:
+    (x_train, y_train), (x_test, y_test) = cifar10.load_data()
+    test_horses = np.where(y_test == 7)[0]
+    x_test = x_test[test_horses]
+    horses = np.where(y_train == 7)[0]
+    # split into batches:
+    dataset = x_train[horses]
+
 total_length = len(dataset)
 num_batches = int(np.floor(total_length / batch_size))
 print("num_batches", num_batches)
@@ -44,7 +51,8 @@ vae = ConvVAE(z_size=z_size,
               kl_tolerance=kl_tolerance,
               is_training=True,
               reuse=False,
-              gpu_mode=False)
+              gpu_mode=False,
+              mnist = mnist_data)
 
 # train loop:
 print("train", "step", "loss", "recon_loss", "kl_loss")

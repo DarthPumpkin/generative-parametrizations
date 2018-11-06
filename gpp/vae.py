@@ -12,7 +12,8 @@ def reset_graph():
 
 class ConvVAE(object):
     def __init__(self, z_size=32, batch_size=1, learning_rate=0.0001, kl_tolerance=0.5, is_training=False, reuse=False,
-                 gpu_mode=False):
+                 gpu_mode=False, mnist=False):
+        self.mnist = mnist
         self.z_size = z_size
         self.batch_size = batch_size
         self.learning_rate = learning_rate
@@ -32,9 +33,14 @@ class ConvVAE(object):
     def _build_graph(self):
         self.g = tf.Graph()
         with self.g.as_default():
-            self.x = tf.placeholder(tf.float32, shape=[None, 32, 32, 3])
+            if self.mnist:
+                self.x = tf.placeholder(tf.float32, shape=[None, 28, 28])
+                n_filters = 28 // 2
+            else:
+                self.x = tf.placeholder(tf.float32, shape=[None, 32, 32, 3])
+                n_filters = 32 // 2
             # Encoder
-            n_filters = 32//2
+
             h = tf.layers.conv2d(self.x, n_filters, 4, strides=2, activation=tf.nn.relu, name="enc_conv1")
             h = tf.layers.conv2d(h, 2*n_filters, 4, strides=2, activation=tf.nn.relu, name="enc_conv2")
             h = tf.layers.conv2d(h, 4*n_filters, 4, strides=2, activation=tf.nn.relu, name="enc_conv3")
@@ -56,7 +62,10 @@ class ConvVAE(object):
             h = tf.layers.conv2d_transpose(h, 2*n_filters, 5, strides=2, activation=tf.nn.relu, name="dec_deconv1")
             h = tf.layers.conv2d_transpose(h, n_filters, 6, strides=2, activation=tf.nn.relu, name="dec_deconv2")
             # print(h.get_shape().as_list())
-            self.y = tf.layers.conv2d_transpose(h, 3, 6, strides=2, activation=tf.nn.sigmoid, name="dec_deconv3")
+            if self.mnist:
+                self.y = tf.layers.conv2d_transpose(h, 3, 6, strides=2, activation=tf.nn.sigmoid, name="dec_deconv3")
+            else:
+                self.y = tf.layers.conv2d_transpose(h, 1, 6, strides=2, activation=tf.nn.sigmoid, name="dec_deconv3")
 
             # train ops
             if self.is_training:
