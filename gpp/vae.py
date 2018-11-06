@@ -46,23 +46,17 @@ class ConvVAE(object):
             self.logvar = tf.layers.dense(h, self.z_size, name="enc_fc_log_var")
             self.sigma = tf.exp(self.logvar / 2.0)
             self.epsilon = tf.random_normal([self.batch_size, self.z_size])
-            # self.print_shape = tf.Print(tf.shape(h), [tf.shape(h)], "Does this work", name="print_node")
 
             self.z = self.mu + self.sigma * self.epsilon
 
             # Decoder
             h = tf.layers.dense(self.z, 2 * 2 * 4*n_filters, name="dec_fc")
-            print(h.get_shape().as_list())
             h = tf.reshape(h, [-1, 1, 1, 2 * 2 * 4*n_filters])
-            print(h.get_shape().as_list())
             # h = tf.layers.conv2d_transpose(h, 64, 5, strides=2, activation=tf.nn.relu, name="dec_deconv1")
-            print(h.get_shape().as_list())
             h = tf.layers.conv2d_transpose(h, 2*n_filters, 5, strides=2, activation=tf.nn.relu, name="dec_deconv1")
-            print(h.get_shape().as_list())
             h = tf.layers.conv2d_transpose(h, n_filters, 6, strides=2, activation=tf.nn.relu, name="dec_deconv2")
-            print(h.get_shape().as_list())
+            # print(h.get_shape().as_list())
             self.y = tf.layers.conv2d_transpose(h, 3, 6, strides=2, activation=tf.nn.sigmoid, name="dec_deconv3")
-            print(self.y.get_shape().as_list())
 
             # train ops
             if self.is_training:

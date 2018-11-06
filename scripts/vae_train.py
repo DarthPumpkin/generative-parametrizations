@@ -26,10 +26,12 @@ model_save_path = "tf_vae"
 os.makedirs(model_save_path, exist_ok=True)
 os.makedirs(IMG_OUTPUT_DIR, exist_ok=True)
 
-(x_train, _), (x_test, _) = cifar10.load_data()
-
+(x_train, y_train), (x_test, y_test) = cifar10.load_data()
+test_horses = np.where(y_test == 7)[0]
+x_test = x_test[test_horses]
+horses = np.where(y_train == 7)[0]
 # split into batches:
-dataset = x_train
+dataset = x_train[horses]
 total_length = len(dataset)
 num_batches = int(np.floor(total_length / batch_size))
 print("num_batches", num_batches)
@@ -65,8 +67,6 @@ for epoch in range(NUM_EPOCH):
                                                                      vae.train_op],
                                                                     feed)
         train_loss_list.append(train_loss)
-        # if (train_step + 1) % 5000 == 0:
-        #     vae.save_json("tf_vae/vae.json")
     epoch_train_loss = np.mean(train_loss_list[-num_batches:])
     epoch > 0 and print("Epoch: ", epoch,
                         " step: ", (train_step + 1),
@@ -80,7 +80,6 @@ for epoch in range(NUM_EPOCH):
     plt.savefig("train_loss_history.pdf", format="pdf")
 
     batch_z = vae.encode(x_test[:batch_size])
-    print(batch_z)
     reconstruct = vae.decode(batch_z)
     # reconstruct = (reconstruct * 255).astype(np.uint8)
     # reconstruct = (reconstruct * 127.5 + 127.5).astype(np.uint8)
