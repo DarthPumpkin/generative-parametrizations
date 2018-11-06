@@ -26,10 +26,12 @@ model_save_path = "tf_vae"
 os.makedirs(model_save_path, exist_ok=True)
 os.makedirs(IMG_OUTPUT_DIR, exist_ok=True)
 
-(x_train, _), (x_test, _) = cifar10.load_data()
-
+(x_train, y_train), (x_test, y_test) = cifar10.load_data()
+test_horses = np.where(y_test == 7)[0]
+x_test = x_test[test_horses]
+horses = np.where(y_train == 7)[0]
 # split into batches:
-dataset = x_train
+dataset = x_train[horses]
 total_length = len(dataset)
 num_batches = int(np.floor(total_length / batch_size))
 print("num_batches", num_batches)
@@ -47,7 +49,11 @@ vae = ConvVAE(z_size=z_size,
 # train loop:
 print("train", "step", "loss", "recon_loss", "kl_loss")
 train_step = train_loss = r_loss = kl_loss = None
+
 train_loss_list = []
+r_loss_list = []
+kl_loss_list = []
+
 for epoch in range(NUM_EPOCH):
     np.random.shuffle(dataset)
     for idx in tqdm(range(num_batches)):
@@ -65,22 +71,34 @@ for epoch in range(NUM_EPOCH):
                                                                      vae.train_op],
                                                                     feed)
         train_loss_list.append(train_loss)
+<<<<<<< HEAD
+        r_loss_list.append(r_loss)
+        kl_loss_list.append(kl_loss)
         # if (train_step + 1) % 5000 == 0:
         #     vae.save_json("tf_vae/vae.json")
+
+=======
+>>>>>>> c716879496c8b09d36aaf81ec92e91fa5bf4f12b
     epoch_train_loss = np.mean(train_loss_list[-num_batches:])
-    epoch > 0 and print("Epoch: ", epoch,
+    epoch_r_loss = np.mean(r_loss_list[-num_batches:])
+    epoch_kl_loss = np.mean(kl_loss_list[-num_batches:])
+
+    epoch > 0 and print(" Epoch: ", epoch,
                         " step: ", (train_step + 1),
                         " train loss: ", epoch_train_loss,
-                        " r loss: ", r_loss,
-                        " kl loss: ", kl_loss)
+                        " r loss: ", epoch_r_loss,
+                        " kl loss: ", epoch_kl_loss)
     # finished, final model:
     # vae.save_json("tf_vae/vae.json")
 
-    plt.plot(train_loss_list)
+    plt.plot(train_loss_list, label="total loss")
+    plt.plot(r_loss_list, label="rec loss")
+    plt.plot(kl_loss_list, label="kl loss")
+    plt.legend()
+
     plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_history.pdf', format="pdf")
 
     batch_z = vae.encode(x_test[:batch_size])
-    #print(batch_z)
     reconstruct = vae.decode(batch_z)
     # reconstruct = (reconstruct * 255).astype(np.uint8)
     # reconstruct = (reconstruct * 127.5 + 127.5).astype(np.uint8)
