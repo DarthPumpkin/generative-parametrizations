@@ -71,17 +71,12 @@ for epoch in range(NUM_EPOCH):
                                                                      vae.train_op],
                                                                     feed)
         train_loss_list.append(train_loss)
-<<<<<<< HEAD
-<<<<<<< HEAD
+
         r_loss_list.append(r_loss)
         kl_loss_list.append(kl_loss)
         # if (train_step + 1) % 5000 == 0:
         #     vae.save_json("tf_vae/vae.json")
 
-=======
->>>>>>> c716879496c8b09d36aaf81ec92e91fa5bf4f12b
-=======
->>>>>>> c716879496c8b09d36aaf81ec92e91fa5bf4f12b
     epoch_train_loss = np.mean(train_loss_list[-num_batches:])
     epoch_r_loss = np.mean(r_loss_list[-num_batches:])
     epoch_kl_loss = np.mean(kl_loss_list[-num_batches:])
