@@ -1,6 +1,7 @@
 from pathlib import Path
 from time import sleep
 
+import imageio
 import torch
 import gym
 from gym.envs.classic_control import PendulumEnv
@@ -13,12 +14,13 @@ from gpp.dataset import EnvDataset
 
 BATCH_SIZE = 16
 TRAINING_EPOCHS = 50
-N_EPISODES = 200
+N_EPISODES = 400
 EPISODE_LENGTH = 40
 OVERWRITE_EXISTING = False
+SAVE_GIFS = True
 
 MDN_COMPONENTS = 5
-MPC_HORIZON = 20
+MPC_HORIZON = 30
 MPC_SEQUENCES = 2000
 
 
@@ -82,10 +84,21 @@ if __name__ == '__main__':
 
     print('Testing model...')
     controller = MPC(env, model, MPC_HORIZON, MPC_SEQUENCES, np_random)
-    obs = env.reset()
 
-    for _ in range(20000):
-        env.render()
-        action = controller.get_action(obs)
-        obs, rewards, dones, info = env.step(action)
-        sleep(1. / 60)
+    for e in range(2000):
+        obs = env.reset()
+        frames = []
+        print(f'Sampled mass = {raw_env.physical_props[1]}')
+
+        for s in range(200):
+            if SAVE_GIFS:
+                frames.append(env.render(mode='rgb_array'))
+            else:
+                env.render()
+            action = controller.get_action(obs)
+            obs, rewards, dones, info = env.step(action)
+            sleep(1. / 60)
+
+        if SAVE_GIFS:
+            gif_path = f'../out/pendulum_mdn_{e}.gif'
+            imageio.mimsave(gif_path, frames, fps=29)
