@@ -2,8 +2,11 @@ import os
 import numpy as np
 from keras.datasets import cifar10, mnist
 import _gpp
+import cv2
 from tqdm import tqdm
-from gpp.vae import ConvVAE
+# from gpp.vae import ConvVAE
+from gpp.vae_modified_architecture import ConvVAE
+import zipfile
 import matplotlib.pyplot as plt
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu systems
@@ -12,10 +15,10 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu syst
 np.set_printoptions(precision=4, edgeitems=6, linewidth=100, suppress=True)
 
 # Hyperparameters for ConvVAE
-z_size = 32
+z_size = 512
 batch_size = 128
-learning_rate = 0.01
-kl_tolerance = 0.05
+learning_rate = 0.001
+kl_tolerance = 0.1
 
 # Parameters for training
 NUM_EPOCH = 100
@@ -26,12 +29,30 @@ model_save_path = "tf_vae"
 os.makedirs(model_save_path, exist_ok=True)
 os.makedirs(IMG_OUTPUT_DIR, exist_ok=True)
 
-mnist_data = False
+pendulum_data = True
 
-if mnist_data:
-    (x_train, y_train), (x_test, y_test) = mnist.load_data()
-    x_train = x_train / 255
-    x_test = x_test / 255
+if pendulum_data:
+    data_path = "../data"
+    if not os.path.exists(os.path.join(data_path, "pendulum_imgs.npy")):
+        zip_ref = zipfile.ZipFile("../data/pendulum_imgs.npy.zip", 'r')
+        zip_ref.extractall("../data")
+        zip_ref.close()
+    dataset = np.load("../data/pendulum_imgs.npy")
+    np.random.shuffle(dataset)
+    dataset = dataset / 255.
+    dataset = dataset[:, 60:190, 60:190]
+    # plt.imshow(dataset[100])
+    # plt.show()
+    new_data = []
+    for i, d in enumerate(dataset):
+        new_data.append(cv2.resize(d, (32, 32), interpolation=cv2.INTER_AREA))
+    dataset = np.array(new_data)
+    # plt.imshow(dataset[100])
+    # plt.show()
+    train_ratio = int(0.8 * len(dataset))
+    x_train = dataset[:train_ratio]
+    x_test = dataset[train_ratio:]
+
 else:
     (x_train, y_train), (x_test, y_test) = cifar10.load_data()
     x_train = x_train / 255
@@ -55,7 +76,7 @@ vae = ConvVAE(z_size=z_size,
               is_training=True,
               reuse=False,
               gpu_mode=False,
-              mnist=mnist_data)
+              )
 
 # train loop:
 print("train", "step", "loss", "recon_loss", "kl_loss")
@@ -121,7 +142,7 @@ for epoch in range(NUM_EPOCH):
 
     for i in range(im2print):
         plt.subplot(im2print, 2, 1+2*i)
-        original = x_test[i]
+        original = x_test[i].clip(0, 1)
         plt.imshow(original)
         plt.axis("off")
 
