@@ -35,26 +35,25 @@ class ConvVAE(object):
             self.x = tf.placeholder(tf.float32, shape=[None, 32, 32, 3])
             # Encoder
             h = tf.layers.conv2d(self.x, 16, 4, strides=2, activation=tf.nn.relu, name="enc_conv1")
+            print(h.get_shape().as_list())
             h = tf.layers.conv2d(h, 32, 4, strides=2, activation=tf.nn.relu, name="enc_conv2")
+            print(h.get_shape().as_list())
             h = tf.layers.conv2d(h, 64, 4, strides=2, activation=tf.nn.relu, name="enc_conv3")
-            # h = tf.layers.conv2d(h, 128, 4, strides=2, activation=tf.nn.relu, name="enc_conv4")
+            print(h.get_shape().as_list())
             h = tf.reshape(h, [-1, 2 * 128])
+            print(h.get_shape().as_list())
 
             # VAE
             self.mu = tf.layers.dense(h, self.z_size, name="enc_fc_mu")
             self.logvar = tf.layers.dense(h, self.z_size, name="enc_fc_log_var")
             self.sigma = tf.exp(self.logvar / 2.0)
             self.epsilon = tf.random_normal([self.batch_size, self.z_size])
-            # self.print_shape = tf.Print(tf.shape(h), [tf.shape(h)], "Does this work", name="print_node")
 
             self.z = self.mu + self.sigma * self.epsilon
-
             # Decoder
             h = tf.layers.dense(self.z, 4 * 128, name="dec_fc")
             print(h.get_shape().as_list())
             h = tf.reshape(h, [-1, 1, 1, 4 * 128])
-            print(h.get_shape().as_list())
-            # h = tf.layers.conv2d_transpose(h, 64, 5, strides=2, activation=tf.nn.relu, name="dec_deconv1")
             print(h.get_shape().as_list())
             h = tf.layers.conv2d_transpose(h, 32, 5, strides=2, activation=tf.nn.relu, name="dec_deconv1")
             print(h.get_shape().as_list())

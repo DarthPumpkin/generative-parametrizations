@@ -115,7 +115,7 @@ for epoch in range(NUM_EPOCH):
 
     batch_z = vae.encode(x_test[:batch_size])
     reconstruct = vae.decode(batch_z)
-    reconstruct = (reconstruct * 255).astype(np.uint16)
+    reconstruct = (reconstruct * 255).astype(np.uint8)
     # reconstruct = (reconstruct * 127.5 + 127.5).astype(np.uint8)
     im2print = 10
 
