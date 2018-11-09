@@ -12,10 +12,10 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu syst
 np.set_printoptions(precision=4, edgeitems=6, linewidth=100, suppress=True)
 
 # Hyperparameters for ConvVAE
-z_size = 128
-batch_size = 64
-learning_rate = 0.0001
-kl_tolerance = 0.5
+z_size = 32
+batch_size = 128
+learning_rate = 0.01
+kl_tolerance = 0.05
 
 # Parameters for training
 NUM_EPOCH = 30
@@ -30,14 +30,19 @@ mnist_data = False
 
 if mnist_data:
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
+    x_train = x_train / 255
+    x_test = x_test / 255
     dataset = x_train
 else:
     (x_train, y_train), (x_test, y_test) = cifar10.load_data()
+    x_train = x_train / 255
+    x_test = x_test / 255
     test_horses = np.where(y_test == 7)[0]
     x_test = x_test[test_horses]
     horses = np.where(y_train == 7)[0]
     # split into batches:
     dataset = x_train[horses]
+
 
 total_length = len(dataset)
 num_batches = int(np.floor(total_length / batch_size))
@@ -69,7 +74,7 @@ for epoch in range(NUM_EPOCH):
     for idx in tqdm(range(num_batches)):
         batch = dataset[idx * batch_size:(idx + 1) * batch_size]
 
-        obs = batch.astype(np.float) / 255.0
+        obs = batch.astype(np.float)
         # obs = (batch.astype(np.float) - 127.5) / 127.5
         feed = {vae.x: obs, }
 
@@ -110,15 +115,15 @@ for epoch in range(NUM_EPOCH):
 
     plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_history.pdf', format="pdf")
 
-    batch_z = vae.encode(x_test[:batch_size])
+    batch_z = vae.encode(x_train[:batch_size])
     reconstruct = vae.decode(batch_z)
-    reconstruct = (reconstruct * 255).astype(np.uint8)
+    reconstruct = (reconstruct * 255).astype(np.uint16)
     # reconstruct = (reconstruct * 127.5 + 127.5).astype(np.uint8)
     im2print = 10
 
     for i in range(im2print):
         plt.subplot(im2print, 2, 1+2*i)
-        original = x_test[i]
+        original = x_train[i]
         plt.imshow(original)
         plt.axis("off")
 
