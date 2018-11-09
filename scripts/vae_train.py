@@ -18,7 +18,7 @@ learning_rate = 0.01
 kl_tolerance = 0.05
 
 # Parameters for training
-NUM_EPOCH = 30
+NUM_EPOCH = 100
 DATA_DIR = "record"
 IMG_OUTPUT_DIR = './out'
 
@@ -32,7 +32,6 @@ if mnist_data:
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
     x_train = x_train / 255
     x_test = x_test / 255
-    dataset = x_train
 else:
     (x_train, y_train), (x_test, y_test) = cifar10.load_data()
     x_train = x_train / 255
@@ -40,11 +39,10 @@ else:
     test_horses = np.where(y_test == 7)[0]
     x_test = x_test[test_horses]
     horses = np.where(y_train == 7)[0]
-    # split into batches:
-    dataset = x_train[horses]
+    x_train = x_train[horses]
 
 
-total_length = len(dataset)
+total_length = len(x_train)
 num_batches = int(np.floor(total_length / batch_size))
 print("num_batches", num_batches)
 
@@ -70,9 +68,9 @@ kl_loss_list = []
 smoothing = 0.9
 
 for epoch in range(NUM_EPOCH):
-    np.random.shuffle(dataset)
+    np.random.shuffle(x_train)
     for idx in tqdm(range(num_batches)):
-        batch = dataset[idx * batch_size:(idx + 1) * batch_size]
+        batch = x_train[idx * batch_size:(idx + 1) * batch_size]
 
         obs = batch.astype(np.float)
         # obs = (batch.astype(np.float) - 127.5) / 127.5
@@ -115,7 +113,7 @@ for epoch in range(NUM_EPOCH):
 
     plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_history.pdf', format="pdf")
 
-    batch_z = vae.encode(x_train[:batch_size])
+    batch_z = vae.encode(x_test[:batch_size])
     reconstruct = vae.decode(batch_z)
     reconstruct = (reconstruct * 255).astype(np.uint16)
     # reconstruct = (reconstruct * 127.5 + 127.5).astype(np.uint8)
@@ -123,7 +121,7 @@ for epoch in range(NUM_EPOCH):
 
     for i in range(im2print):
         plt.subplot(im2print, 2, 1+2*i)
-        original = x_train[i]
+        original = x_test[i]
         plt.imshow(original)
         plt.axis("off")
 
