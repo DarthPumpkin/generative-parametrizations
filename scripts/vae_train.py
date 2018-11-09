@@ -15,7 +15,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu syst
 np.set_printoptions(precision=4, edgeitems=6, linewidth=100, suppress=True)
 
 # Hyperparameters for ConvVAE
-z_size = 64
+z_size = 8
 batch_size = 128
 learning_rate = 0.001
 kl_tolerance = 0.5
@@ -110,7 +110,7 @@ for epoch in range(NUM_EPOCH):
 
         train_loss_list.append(train_loss_list[-1]*smoothing+train_loss*(1-smoothing))
         r_loss_list.append(r_loss_list[-1] * smoothing + r_loss * (1-smoothing))
-        kl_loss_list.append(kl_loss_list[-1] * smoothing + kl_loss*(1-smoothing))
+        # kl_loss_list.append(kl_loss_list[-1] * smoothing + kl_loss*(1-smoothing))
 
     epoch_train_loss = np.mean(train_loss_list[-num_batches:])
     epoch_r_loss = np.mean(r_loss_list[-num_batches:])
@@ -126,7 +126,7 @@ for epoch in range(NUM_EPOCH):
 
     plt.plot(train_loss_list, label="total loss")
     plt.plot(r_loss_list, label="rec loss")
-    plt.plot(kl_loss_list, label="kl loss")
+    # plt.plot(kl_loss_list, label="kl loss")
     plt.legend()
 
     plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_history.pdf', format="pdf")
