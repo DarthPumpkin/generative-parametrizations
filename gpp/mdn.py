@@ -1,10 +1,12 @@
 import numpy as np
 import torch
 from torch import nn
+from torch.distributions import Normal, Gumbel
 
 HIDDEN_UNITS = 20
 _normalization_factor = float(1.0 / np.sqrt(2.0 * np.pi))
-
+_std_normal = Normal(0.0, 1.0)
+_gumbel = Gumbel(0.0, 1.0)
 
 class MDN(nn.Module):
     def __init__(self, n_inputs, n_outputs, n_components):
@@ -44,6 +46,24 @@ def mdn_loss(pi, mu, sig2, y):
     return torch.mean(likelihoods)
 
 
+def sample_gmm_torch(pi: torch.Tensor, mu: torch.Tensor, sig2: torch.Tensor) -> torch.Tensor:
+    """
+    Takes one sample for each of the n GMMs
+    :param pi: (n x k) mixture weights
+    :param mu: (n x k) means
+    :param sig2: (n x k) variances
+    :return: (n) samples
+    """
+    other_dims, k = pi.shape[:-1], pi.shape[-1]
+    n = np.prod(other_dims).item()
+    pi, mu, sig2 = [x.reshape(n, k) for x in (pi, mu, sig2)]
+    k_sampled = _gumbel_sample_torch(pi)
+    mu_sampled = mu[np.arange(n), k_sampled]
+    sig2_sampled = sig2[np.arange(n), k_sampled]
+    gmm_sampled = _std_normal.sample((n,)) * sig2_sampled + mu_sampled
+    return gmm_sampled.reshape(other_dims)
+
+
 def sample_gmm(pi: np.ndarray, mu: np.ndarray, sig2: np.ndarray) -> np.ndarray:
     """Takes one sample for each of the n GMMs
     :param pi: (n x k) mixture weights
@@ -68,6 +88,11 @@ def _gmm_neg_log_likelihood(pi, mu, sig2, y):
     density = torch.sum(pi * densities, dim=-1)
     nnl = -torch.log(density)
     return nnl
+
+
+def _gumbel_sample_torch(x: torch.Tensor, dim=1) -> torch.Tensor:
+    z = _gumbel.sample(x.shape)
+    return (torch.log(x) + z).argmax(dim=dim)
 
 
 def _gumbel_sample(x, axis=1):
