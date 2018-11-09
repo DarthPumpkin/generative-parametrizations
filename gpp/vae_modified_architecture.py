@@ -12,8 +12,7 @@ def reset_graph():
 
 class ConvVAE(object):
     def __init__(self, z_size=32, batch_size=1, learning_rate=0.0001, kl_tolerance=0.5, is_training=False, reuse=False,
-                 gpu_mode=False, mnist=False):
-        self.mnist = mnist
+                 gpu_mode=False):
         self.z_size = z_size
         self.batch_size = batch_size
         self.learning_rate = learning_rate
@@ -33,12 +32,8 @@ class ConvVAE(object):
     def _build_graph(self):
         self.g = tf.Graph()
         with self.g.as_default():
-            if self.mnist:
-                self.x = tf.placeholder(tf.float32, shape=[None, 28, 28, 1])
-                n_filters = 28 // 2
-            else:
-                self.x = tf.placeholder(tf.float32, shape=[None, 32, 32, 3])
-                n_filters = 32 // 2
+            self.x = tf.placeholder(tf.float32, shape=[None, 32, 32, 3])
+            n_filters = 32 // 2
             # Encoder
 
             h = tf.layers.conv2d(self.x, n_filters, 2, strides=2, activation=tf.nn.relu, name="enc_conv1")
@@ -63,18 +58,13 @@ class ConvVAE(object):
             h = tf.layers.dense(self.z, 2 * 2 * n_filters, name="dec_fc")
             h = tf.reshape(h, [-1, 1, 1, 2 * 2 * n_filters])
             print(h.get_shape().as_list())
-            # h = tf.layers.conv2d_transpose(h, 8*n_filters, 2, strides=2, activation=tf.nn.relu, name="dec_deconv1")
-            # print(h.get_shape().as_list())
             h = tf.layers.conv2d_transpose(h, 4*n_filters, 4, strides=2, activation=tf.nn.relu, name="dec_deconv2")
             print(h.get_shape().as_list())
             h = tf.layers.conv2d_transpose(h, 2*n_filters, 2, strides=2, activation=tf.nn.relu, name="dec_deconv3")
             print(h.get_shape().as_list())
             h = tf.layers.conv2d_transpose(h, 1*n_filters, 2, strides=2, activation=tf.nn.relu, name="dec_deconv4")
             print(h.get_shape().as_list())
-            if self.mnist:
-                self.y = tf.layers.conv2d_transpose(h, 1, 6, strides=2, activation=tf.nn.sigmoid, name="dec_deconv5")
-            else:
-                self.y = tf.layers.conv2d_transpose(h, 3, 2, strides=2, activation=tf.nn.sigmoid, name="dec_deconv5")
+            self.y = tf.layers.conv2d_transpose(h, 3, 2, strides=2, activation=tf.nn.sigmoid, name="dec_deconv5")
 
             print(self.y.get_shape().as_list())
 
@@ -105,9 +95,6 @@ class ConvVAE(object):
                 self.lr = tf.Variable(self.learning_rate, trainable=False)
                 self.optimizer = tf.train.AdamOptimizer(self.lr)
                 grads = self.optimizer.compute_gradients(self.loss)
-                # tf.clip_by_global_norm(grads, 4)
-                # can potentially clip gradients here.
-
                 self.train_op = self.optimizer.apply_gradients(
                     grads, global_step=self.global_step, name='train_step')
 

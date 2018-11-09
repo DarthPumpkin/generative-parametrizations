@@ -15,13 +15,13 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu syst
 np.set_printoptions(precision=4, edgeitems=6, linewidth=100, suppress=True)
 
 # Hyperparameters for ConvVAE
-z_size = 512
+z_size = 64
 batch_size = 128
 learning_rate = 0.001
-kl_tolerance = 0.1
+kl_tolerance = 0.5
 
 # Parameters for training
-NUM_EPOCH = 100
+NUM_EPOCH = 500
 DATA_DIR = "record"
 IMG_OUTPUT_DIR = './out'
 
@@ -35,7 +35,7 @@ if pendulum_data:
     data_path = "../data"
     if not os.path.exists(os.path.join(data_path, "pendulum_imgs.npy")):
         zip_ref = zipfile.ZipFile("../data/pendulum_imgs.npy.zip", 'r')
-        zip_ref.extractall("../data")
+        zip_ref.extractall(data_path)
         zip_ref.close()
     dataset = np.load("../data/pendulum_imgs.npy")
     np.random.shuffle(dataset)
@@ -94,7 +94,6 @@ for epoch in range(NUM_EPOCH):
         batch = x_train[idx * batch_size:(idx + 1) * batch_size]
 
         obs = batch.astype(np.float)
-        # obs = (batch.astype(np.float) - 127.5) / 127.5
         feed = {vae.x: obs, }
 
         (train_loss, r_loss, kl_loss, train_step, _) = vae.sess.run([vae.loss,
@@ -112,8 +111,6 @@ for epoch in range(NUM_EPOCH):
         train_loss_list.append(train_loss_list[-1]*smoothing+train_loss*(1-smoothing))
         r_loss_list.append(r_loss_list[-1] * smoothing + r_loss * (1-smoothing))
         kl_loss_list.append(kl_loss_list[-1] * smoothing + kl_loss*(1-smoothing))
-        # if (train_step + 1) % 5000 == 0:
-        #     vae.save_json("tf_vae/vae.json")
 
     epoch_train_loss = np.mean(train_loss_list[-num_batches:])
     epoch_r_loss = np.mean(r_loss_list[-num_batches:])
