@@ -13,8 +13,6 @@ from gpp import run_model_on_pendulum
 from gpp.mpc import MPC
 
 TEST_RUNS = 50
-MASS_MEANS = [1]
-MASS_STDS = [0.5]
 MODEL_TYPE = 'mdn'
 
 if MODEL_TYPE == 'trpo':
@@ -25,7 +23,7 @@ elif MODEL_TYPE == 'mdn':
     SAVE_PATH = "../out/tmp_mdn_model.csv"
 
 
-def _evaluation_worker(seed, runs):
+def _evaluation_worker(test_data):
 
     model_type = MODEL_TYPE
 
@@ -41,6 +39,12 @@ def _evaluation_worker(seed, runs):
         def next_action(obs):
             return mpc.get_action(obs)
 
+        model_info = dict(
+            type='mpc-mdn',
+            horizon=mpc.horizon,
+            sequences=mpc.n_action_sequences
+        )
+
     elif model_type == 'trpo':
 
         # load model
@@ -50,32 +54,46 @@ def _evaluation_worker(seed, runs):
             action, _ = model.predict(obs, deterministic=True)
             return action
 
+        model_info = dict(
+            type='trpo'
+        )
+
     else:
         raise NotImplementedError
 
-    results = pd.DataFrame()
-    for mean, std in zip(MASS_MEANS, MASS_STDS):
-        masses, rewards = run_model_on_pendulum.test(env, next_action, runs, mean, std, seed=seed)
-        t, = masses.shape
-        df = pd.DataFrame({"mass": masses, "mass_mean": [mean] * t, "mass_std": [std] * t, "reward": rewards})
-        results = results.append(df)
+
+    rewards = run_model_on_pendulum.test(env, next_action, test_data, episode_length=200)
+
+    results = pd.DataFrame(test_data)
+    results = results.assign(rewards=pd.Series(rewards).values)
+    results = results.assign(model_info=[model_info] * len(results))
 
     return results
 
 
 def run_evaluation(workers=1, seed=42):
 
-    tick_t = timer()
+    print('Generating test data...')
+    test_data = run_model_on_pendulum.generate_test_dataset(episodes=TEST_RUNS, seed=seed)
+    total_runs = len(test_data)
+
     print('Running evaluation...')
+    tick_t = timer()
 
     if workers > 1:
-        parallel = Parallel(n_jobs=workers, backend='multiprocessing', verbose=5)
-        runs_per_worker = np.ones(workers).astype(np.int) * (TEST_RUNS // workers)
-        runs_per_worker[-1] += TEST_RUNS % workers
-        results = parallel(delayed(_evaluation_worker)(seed + i, runs_per_worker[i]) for i in range(workers))
+        workers = min(workers, total_runs)
+        parallel = Parallel(n_jobs=workers, backend='loky', verbose=5)
+        #runs_per_worker = np.ones(workers).astype(np.int) * (total_runs // workers)
+        #runs_per_worker[-1] += total_runs % workers
+        split_test_data = np.array_split(test_data, workers)
+
+        for i in range(len(split_test_data)):
+            print(len(split_test_data[i]))
+
+        results = parallel(delayed(_evaluation_worker)(split_test_data[i]) for i in range(workers))
         results = pd.concat(results)
     else:
-        results = _evaluation_worker(seed, TEST_RUNS)
+        results = _evaluation_worker(test_data)
 
     tock_t = timer()
     print(f'Done. Took ~{round(tock_t - tick_t)}s')
