@@ -64,7 +64,7 @@ def test(env: gym.Env, controller_fun, test_data: pd.DataFrame, episode_length=2
 
     # run controller_fun on environment
     rewards = np.zeros(episodes)
-    for i in range(episodes):
+    for i in tqdm(range(episodes)):
         pdi = pd_index[i]
 
         # reset the environment to ensure that everything is clean

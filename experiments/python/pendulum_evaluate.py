@@ -61,7 +61,6 @@ def _evaluation_worker(test_data):
     else:
         raise NotImplementedError
 
-
     rewards = run_model_on_pendulum.test(env, next_action, test_data, episode_length=200)
 
     results = pd.DataFrame(test_data)
@@ -82,15 +81,9 @@ def run_evaluation(workers=1, seed=42):
 
     if workers > 1:
         workers = min(workers, total_runs)
-        parallel = Parallel(n_jobs=workers, backend='loky', verbose=5)
-        #runs_per_worker = np.ones(workers).astype(np.int) * (total_runs // workers)
-        #runs_per_worker[-1] += total_runs % workers
-        split_test_data = np.array_split(test_data, workers)
-
-        for i in range(len(split_test_data)):
-            print(len(split_test_data[i]))
-
-        results = parallel(delayed(_evaluation_worker)(split_test_data[i]) for i in range(workers))
+        parallel = Parallel(n_jobs=workers, backend='multiprocessing', verbose=5)
+        split_test_data = list([x.copy() for x in np.array_split(test_data, workers)])
+        results = parallel(delayed(_evaluation_worker)(x) for x in split_test_data)
         results = pd.concat(results)
     else:
         results = _evaluation_worker(test_data)
