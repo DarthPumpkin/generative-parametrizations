@@ -34,6 +34,12 @@ class EnvDataset(Dataset):
             return 0
         return self.data[0][1].size
 
+    @property
+    def state_shape(self):
+        if self.episodes == 0 or self.episode_length == 0:
+            return 0
+        return self.data[0][0][0].shape
+
     def generate(self, episodes: int, episode_length: int):
         env, raw_env = self.env, self._raw_env
         data = []
