@@ -21,7 +21,7 @@ learning_rate = 0.001
 kl_tolerance = 0.5
 
 # Parameters for training
-NUM_EPOCH = 500
+NUM_EPOCH = 5000
 DATA_DIR = "record"
 IMG_OUTPUT_DIR = './out'
 
@@ -110,7 +110,7 @@ for epoch in range(NUM_EPOCH):
 
         train_loss_list.append(train_loss_list[-1]*smoothing+train_loss*(1-smoothing))
         r_loss_list.append(r_loss_list[-1] * smoothing + r_loss * (1-smoothing))
-        # kl_loss_list.append(kl_loss_list[-1] * smoothing + kl_loss*(1-smoothing))
+        kl_loss_list.append(kl_loss_list[-1] * smoothing + kl_loss*(1-smoothing))
 
     epoch_train_loss = np.mean(train_loss_list[-num_batches:])
     epoch_r_loss = np.mean(r_loss_list[-num_batches:])
@@ -122,11 +122,11 @@ for epoch in range(NUM_EPOCH):
                         " r loss: ", epoch_r_loss,
                         " kl loss: ", epoch_kl_loss)
     # finished, final model:
-    # vae.save_json("tf_vae/vae.json")
+    vae.save_json("tf_vae/vae.json")
 
     plt.plot(train_loss_list, label="total loss")
     plt.plot(r_loss_list, label="rec loss")
-    # plt.plot(kl_loss_list, label="kl loss")
+    plt.plot(kl_loss_list, label="kl loss")
     plt.legend()
 
     plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_history.pdf', format="pdf")
@@ -134,18 +134,31 @@ for epoch in range(NUM_EPOCH):
     batch_z = vae.encode(x_test[:batch_size])
     reconstruct = vae.decode(batch_z)
     reconstruct = (reconstruct * 255).astype(np.uint8)
-    # reconstruct = (reconstruct * 127.5 + 127.5).astype(np.uint8)
     im2print = 10
+    # if epoch > 200 and epoch % 50 == 0:
+    #     orig = batch_z
+    #     values = np.linspace(-4, 4, 50)
+    #     p_count = 1
+    #     for i in range(batch_z.shape[1]):
+    #         batch_z = orig.copy()
+    #         for j, n in enumerate(values):
+    #             batch_z[0][i] = n
+    #             reconstruct = (vae.decode(batch_z) * 255).astype(np.uint8)
+    #             plt.subplot(16, 50, p_count)
+    #             plt.imshow(reconstruct[0])
+    #             plt.axis("off")
+    #             p_count += 1
+    #     plt.show()
 
     for i in range(im2print):
         plt.subplot(im2print, 2, 1+2*i)
         original = x_test[i].clip(0, 1)
         plt.imshow(original)
         plt.axis("off")
-
+    
         plt.subplot(im2print, 2, 2+2*i)
         plt.imshow(reconstruct[i])
         plt.axis("off")
-
+    
     plt.savefig(f'{IMG_OUTPUT_DIR}/epoch_{epoch}_fig_{i}.png')
     plt.close("all")

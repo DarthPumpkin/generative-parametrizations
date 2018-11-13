@@ -89,7 +89,7 @@ class ConvVAE(object):
                 self.kl_loss = tf.maximum(self.kl_loss, self.kl_tolerance * self.z_size)
                 self.kl_loss = tf.reduce_mean(self.kl_loss)
 
-                self.loss = self.r_loss # + self.kl_loss
+                self.loss = self.r_loss + self.kl_loss * 200
 
                 # training
                 self.lr = tf.Variable(self.learning_rate, trainable=False)
@@ -157,7 +157,7 @@ class ConvVAE(object):
                 self.sess.run(assign_op)
                 idx += 1
 
-    def load_json(self, jsonfile='vae.json'):
+    def load_json(self, jsonfile='tf_vae/vae.json'):
         with open(jsonfile, 'r') as f:
             params = json.load(f)
         self.set_model_params(params)
