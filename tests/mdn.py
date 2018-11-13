@@ -1,4 +1,6 @@
+import tempfile
 import unittest
+from pathlib import Path
 from unittest import TestCase
 
 import torch
@@ -6,6 +8,35 @@ import numpy as np
 
 import _gpp
 from gpp import mdn
+from gpp.models import MDN_Model
+
+
+class TestMDNModel(TestCase):
+
+    def test_save_and_load(self):
+
+        n_inputs = 10
+        n_outputs = 11
+        n_components = 12
+
+        model = MDN_Model(n_inputs, n_outputs, n_components, device=torch.device('cuda'))
+        self.assertTrue(model.device.type == 'cuda')
+        tmp_path = Path(f'{tempfile.mkdtemp()}/test_model.pkl')
+        model.save(tmp_path)
+
+        del model
+
+        model = MDN_Model.load(tmp_path)
+        self.assertTrue(model.n_inputs == n_inputs)
+        self.assertTrue(model.n_outputs == n_outputs)
+        self.assertTrue(model.n_components == n_components)
+        self.assertTrue(model.device.type == 'cuda')
+
+        model.device = torch.device('cpu')
+        self.assertTrue(model.device.type == 'cpu')
+
+        tmp_path.unlink()
+        tmp_path.parent.rmdir()
 
 
 class Test_sample_gmm(TestCase):

@@ -1,7 +1,7 @@
 pandas
 joblib
 tqdm
-git+https://github.com/carlo-/gym@145589680d17b3dbb6b30e7691ccae96c7254d61#egg=gym
+git+https://github.com/carlo-/gym@e86b8989d55f31466a25189c741bbc8c0c3af7d0#egg=gym
 matplotlib
 numpy
 scipy

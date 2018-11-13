@@ -8,6 +8,7 @@ _normalization_factor = float(1.0 / np.sqrt(2.0 * np.pi))
 _std_normal = Normal(0.0, 1.0)
 _gumbel = Gumbel(0.0, 1.0)
 
+
 class MDN(nn.Module):
     def __init__(self, n_inputs, n_outputs, n_components):
         super(MDN, self).__init__()
@@ -60,7 +61,7 @@ def sample_gmm_torch(pi: torch.Tensor, mu: torch.Tensor, sig2: torch.Tensor) -> 
     k_sampled = _gumbel_sample_torch(pi)
     mu_sampled = mu[np.arange(n), k_sampled]
     sig2_sampled = sig2[np.arange(n), k_sampled]
-    gmm_sampled = _std_normal.sample((n,)) * sig2_sampled + mu_sampled
+    gmm_sampled = _std_normal.sample((n,)).to(pi.device) * sig2_sampled + mu_sampled
     return gmm_sampled.reshape(other_dims)
 
 
@@ -91,7 +92,7 @@ def _gmm_neg_log_likelihood(pi, mu, sig2, y):
 
 
 def _gumbel_sample_torch(x: torch.Tensor, dim=1) -> torch.Tensor:
-    z = _gumbel.sample(x.shape)
+    z = _gumbel.sample(x.shape).to(x.device)
     return (torch.log(x) + z).argmax(dim=dim)
 
 

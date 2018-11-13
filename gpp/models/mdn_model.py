@@ -17,8 +17,16 @@ class MDN_Model(BaseModel):
         super().__init__(np_random=np_random)
         self.n_inputs, self.n_outputs, self.n_components = n_inputs, n_outputs, n_components
         self.mdn = MDN(n_inputs, n_outputs, n_components)
-        self.mdn = self.mdn.to(device)
         self.device = device
+
+    @property
+    def device(self):
+        return self._device
+
+    @device.setter
+    def device(self, value):
+        self.mdn = self.mdn.to(value)
+        self._device = value
 
     @staticmethod
     def load(file_path: Path):
@@ -102,11 +110,16 @@ class MDN_Model(BaseModel):
         return odict
 
     def __setstate__(self, odict):
+
+        # for compatibility with older models
+        if 'device' in odict.keys():
+            odict['_device'] = odict['device']
+            del odict['device']
+
         self.__dict__.update(odict)
         self.mdn = MDN(self.n_inputs, self.n_outputs, self.n_components)
         self.mdn.load_state_dict(odict['_mdn_state_dict'])
-        if self.device is not None:
-            self.mdn = self.mdn.to(self.device)
+        self.device = self._device
 
     def _get_state_dict(self):
         state_dict = self.mdn.cpu().state_dict()
