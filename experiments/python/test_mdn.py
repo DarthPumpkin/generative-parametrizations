@@ -4,7 +4,7 @@ from time import sleep
 import imageio
 import torch
 import gym
-from gym.envs.classic_control import PendulumEnv
+from gym.envs.classic_control import GaussianPendulumEnv
 import numpy as np
 
 import _gpp
@@ -14,10 +14,10 @@ from gpp.dataset import EnvDataset
 
 BATCH_SIZE = 16
 TRAINING_EPOCHS = 50
-N_EPISODES = 400
-EPISODE_LENGTH = 40
-OVERWRITE_EXISTING = False
-SAVE_GIFS = True
+N_EPISODES = 800
+EPISODE_LENGTH = 50
+OVERWRITE_EXISTING = True
+SAVE_GIFS = False
 
 MDN_COMPONENTS = 5
 MPC_HORIZON = 30
@@ -33,17 +33,23 @@ if __name__ == '__main__':
         print("No GPU found, proceeding with CPU...")
         device = torch.device("cpu")
 
-    env = gym.make('Pendulum-v0')
-    raw_env = env.unwrapped # type: PendulumEnv
-    raw_env.seed(42)
-    np_random = raw_env.np_random
+    env = gym.make('GaussianPendulum-v0')
+    raw_env = env.unwrapped # type: GaussianPendulumEnv
+    raw_env.configure(
+        seed=42,
+        mass_mean=(0.050, 1.500),
+        #embed_knowledge=True,
+        #perfect_knowledge=True,
+        gym_env=env
+    )
 
+    np_random = raw_env.np_random
     n_inputs = raw_env.observation_space.low.size + raw_env.action_space.low.size
     n_outputs = raw_env.observation_space.low.size
 
     model = MDN_Model(n_inputs, n_outputs, MDN_COMPONENTS, np_random=np_random, device=device)
 
-    model_path = Path('../out/tmp_mdn_model.pkl')
+    model_path = Path('../out/blind_mdn_model.pkl')
     data_path = Path('../out/tmp_mdn_data.pkl')
 
     do_train = True
@@ -59,7 +65,7 @@ if __name__ == '__main__':
 
     if do_train:
 
-        do_generate = False
+        do_generate = True
         dataset = EnvDataset(env)
         if data_path.exists():
             print('Loading data...')
