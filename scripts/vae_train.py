@@ -18,7 +18,7 @@ np.set_printoptions(precision=4, edgeitems=6, linewidth=100, suppress=True)
 
 # Hyperparameters for ConvVAE
 z_size = 64
-batch_size = 128
+batch_size = 32
 learning_rate = 0.001
 kl_tolerance = 0.5
 
@@ -50,10 +50,6 @@ dataset = np.array(new_data)
 train_ratio = int(0.8 * len(dataset))
 x_train = dataset[:train_ratio]
 x_test = dataset[train_ratio:]
-plt.imshow(x_train[0])
-plt.show()
-
-
 
 total_length = len(x_train)
 num_batches = int(np.floor(total_length / batch_size))
@@ -69,6 +65,7 @@ vae = ConvVAE(z_size=z_size,
               reuse=False,
               gpu_mode=False,
               )
+# vae.load_json("tf_vae/vae-fetch.json")
 
 # train loop:
 print("train", "step", "loss", "recon_loss", "kl_loss")
@@ -108,54 +105,55 @@ for epoch in range(NUM_EPOCH):
     epoch_train_loss = np.mean(train_loss_list[-num_batches:])
     epoch_r_loss = np.mean(r_loss_list[-num_batches:])
     epoch_kl_loss = np.mean(kl_loss_list[-num_batches:])
+    loss_grads_list.append(train_loss_list[-1] - train_loss_list[-2])
 
     epoch > 0 and print(" Epoch: ", epoch,
                         " step: ", (train_step + 1),
                         " train loss: ", epoch_train_loss,
                         " r loss: ", epoch_r_loss,
-                        " kl loss: ", epoch_kl_loss)
+                        " kl loss: ", epoch_kl_loss,
+                        " derivative: ", loss_grads_list[-1])
     # finished, final model:
     vae.save_json("tf_vae/vae-fetch.json")
-
-    plt.plot(train_loss_list, label="total loss")
-    plt.plot(r_loss_list, label="rec loss")
-    plt.plot(kl_loss_list, label="kl loss")
-    plt.legend()
-    plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_history.pdf', format="pdf")
-
-    plt.close("all")
-    loss_grads_list.append(train_loss_list[-1] - train_loss_list[-2])
-    plt.plot(loss_grads_list)
-    plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_gradient.pdf', format="pdf")
-
-    batch_z = vae.encode(x_test[:batch_size])
-    reconstruct = vae.decode(batch_z)
-    reconstruct = (reconstruct * 255).astype(np.uint8)
-    im2print = 10
-    # if epoch > 200 and epoch % 50 == 0:
-    #     orig = batch_z
-    #     values = np.linspace(-4, 4, 50)
-    #     p_count = 1
-    #     for i in range(batch_z.shape[1]):
-    #         batch_z = orig.copy()
-    #         for j, n in enumerate(values):
-    #             batch_z[0][i] = n
-    #             reconstruct = (vae.decode(batch_z) * 255).astype(np.uint8)
-    #             plt.subplot(16, 50, p_count)
-    #             plt.imshow(reconstruct[0])
-    #             plt.axis("off")
-    #             p_count += 1
-    #     plt.show()
-
-    for i in range(im2print):
-        plt.subplot(im2print, 2, 1+2*i)
-        original = x_test[i].clip(0, 1)
-        plt.imshow(original)
-        plt.axis("off")
-    
-        plt.subplot(im2print, 2, 2+2*i)
-        plt.imshow(reconstruct[i])
-        plt.axis("off")
-    
-    plt.savefig(f'{IMG_OUTPUT_DIR}/epoch_{epoch}_fig_{i}.png')
-    plt.close("all")
+    #
+    # plt.plot(train_loss_list, label="total loss")
+    # plt.plot(r_loss_list, label="rec loss")
+    # plt.plot(kl_loss_list, label="kl loss")
+    # plt.legend()
+    # plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_history.pdf', format="pdf")
+    #
+    # plt.close("all")
+    # plt.plot(loss_grads_list)
+    # plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_gradient.pdf', format="pdf")
+    #
+    # batch_z = vae.encode(x_test[:batch_size])
+    # reconstruct = vae.decode(batch_z)
+    # reconstruct = (reconstruct * 255).astype(np.uint8)
+    # im2print = 10
+    # # if epoch > 200 and epoch % 50 == 0:
+    # #     orig = batch_z
+    # #     values = np.linspace(-4, 4, 50)
+    # #     p_count = 1
+    # #     for i in range(batch_z.shape[1]):
+    # #         batch_z = orig.copy()
+    # #         for j, n in enumerate(values):
+    # #             batch_z[0][i] = n
+    # #             reconstruct = (vae.decode(batch_z) * 255).astype(np.uint8)
+    # #             plt.subplot(16, 50, p_count)
+    # #             plt.imshow(reconstruct[0])
+    # #             plt.axis("off")
+    # #             p_count += 1
+    # #     plt.show()
+    #
+    # for i in range(im2print):
+    #     plt.subplot(im2print, 2, 1+2*i)
+    #     original = x_test[i].clip(0, 1)
+    #     plt.imshow(original)
+    #     plt.axis("off")
+    #
+    #     plt.subplot(im2print, 2, 2+2*i)
+    #     plt.imshow(reconstruct[i])
+    #     plt.axis("off")
+    #
+    # plt.savefig(f'{IMG_OUTPUT_DIR}/epoch_{epoch}_fig_{i}.png')
+    # plt.close("all")
