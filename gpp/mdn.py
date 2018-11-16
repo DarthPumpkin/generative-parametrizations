@@ -87,7 +87,13 @@ def _gmm_neg_log_likelihood(pi, mu, sig2, y):
     exponent = -0.5 * (y - mu) ** 2 / sig2  # NxK
     densities = _normalization_factor * (torch.exp(exponent) / torch.sqrt(sig2))
     density = torch.sum(pi * densities, dim=-1)
+
+    # FIXME: if the density is very small, the log is NaN. This is a temporary workaround...
+    min_density = 1e-5
+    idx = density < min_density
+    density[idx] = min_density
     nnl = -torch.log(density)
+    nnl[idx] = 0.0
     return nnl
 
 
