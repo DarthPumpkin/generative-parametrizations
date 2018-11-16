@@ -3,6 +3,7 @@ from pathlib import Path
 
 import gym
 from torch.utils.data import Dataset
+from .models.utilities import get_observation_space, get_observations
 import numpy as np
 
 
@@ -32,7 +33,7 @@ class EnvDataset(Dataset):
     def episode_length(self):
         if self.episodes == 0:
             return 0
-        return self.data[0][1].size
+        return self.data[0][1].shape[0]
 
     @property
     def state_shape(self):
@@ -42,16 +43,18 @@ class EnvDataset(Dataset):
 
     def generate(self, episodes: int, episode_length: int):
         env, raw_env = self.env, self._raw_env
+        observation_space = get_observation_space(env)
         data = []
         for e in range(episodes):
-            obs = env.reset()
+            env.reset()
+            obs = get_observations(env)
             actions = np.zeros((episode_length,) + raw_env.action_space.shape)
-            states = np.zeros((episode_length + 1,) + raw_env.observation_space.shape)
+            states = np.zeros((episode_length + 1,) + observation_space.shape)
             states[0] = obs
             for s in range(episode_length):
                 rand_action = raw_env.action_space.sample()
-                obs, rewards, dones, info = env.step(rand_action)
-                states[s + 1] = obs
+                _, rewards, dones, info = env.step(rand_action)
+                states[s + 1] = get_observations(env)
                 actions[s] = rand_action
             data.append((states, actions))
         self.data = data

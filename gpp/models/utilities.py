@@ -23,10 +23,15 @@ def get_observations(env: gym.Env) -> np.ndarray:
     if hasattr(env, 'unwrapped'):
         env = env.unwrapped
     if hasattr(env, 'get_obs'):
-        return env.get_obs()
-    if hasattr(env, '_get_obs'):
-        return env._get_obs()
-    raise ValueError(f'Can\'t get observations from environment {type(env)}!')
+        res = env.get_obs()
+    elif hasattr(env, '_get_obs'):
+        res = env._get_obs()
+    else:
+        raise ValueError(f'Can\'t get observations from environment {type(env)}!')
+    if isinstance(res, dict):
+        return res['observation']
+    else:
+        return res
 
 
 def merge_episodes(episodes):
