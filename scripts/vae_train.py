@@ -2,10 +2,12 @@ import os
 import numpy as np
 from keras.datasets import cifar10, mnist
 import _gpp
+import datetime
 import cv2
 from tqdm import tqdm
 # from gpp.vae import ConvVAE
-from gpp.vae_modified_architecture import ConvVAE
+# from gpp.vae_modified_architecture import ConvVAE
+from gpp.world_models_vae import ConvVAE
 import zipfile
 import matplotlib.pyplot as plt
 
@@ -15,7 +17,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu syst
 np.set_printoptions(precision=4, edgeitems=6, linewidth=100, suppress=True)
 
 # Hyperparameters for ConvVAE
-z_size = 8
+z_size = 64
 batch_size = 128
 learning_rate = 0.001
 kl_tolerance = 0.5
@@ -29,38 +31,28 @@ model_save_path = "tf_vae"
 os.makedirs(model_save_path, exist_ok=True)
 os.makedirs(IMG_OUTPUT_DIR, exist_ok=True)
 
-pendulum_data = True
+pendulum_data = False
+data_path = "../data"
 
 if pendulum_data:
-    data_path = "../data"
-    if not os.path.exists(os.path.join(data_path, "pendulum_imgs.npy")):
-        zip_ref = zipfile.ZipFile("../data/pendulum_imgs.npy.zip", 'r')
-        zip_ref.extractall(data_path)
-        zip_ref.close()
-    dataset = np.load("../data/pendulum_imgs.npy")
-    np.random.shuffle(dataset)
-    dataset = dataset / 255.
+    dataset = np.load(os.path.join(data_path, 'pendulum_imgs.npy'))
     dataset = dataset[:, 60:190, 60:190]
-    # plt.imshow(dataset[100])
-    # plt.show()
-    new_data = []
-    for i, d in enumerate(dataset):
-        new_data.append(cv2.resize(d, (32, 32), interpolation=cv2.INTER_AREA))
-    dataset = np.array(new_data)
-    # plt.imshow(dataset[100])
-    # plt.show()
-    train_ratio = int(0.8 * len(dataset))
-    x_train = dataset[:train_ratio]
-    x_test = dataset[train_ratio:]
+else:  # fetch_sphere env
+    dataset = np.load(os.path.join(data_path, 'fetch_sphere_imgs.npz'))
+    dataset = dataset['arr_0']
 
-else:
-    (x_train, y_train), (x_test, y_test) = cifar10.load_data()
-    x_train = x_train / 255
-    x_test = x_test / 255
-    test_horses = np.where(y_test == 7)[0]
-    x_test = x_test[test_horses]
-    horses = np.where(y_train == 7)[0]
-    x_train = x_train[horses]
+np.random.shuffle(dataset)
+dataset = dataset / 255.
+new_data = []
+for i, d in enumerate(dataset):
+    new_data.append(cv2.resize(d, (64, 64), interpolation=cv2.INTER_AREA))
+dataset = np.array(new_data)
+train_ratio = int(0.8 * len(dataset))
+x_train = dataset[:train_ratio]
+x_test = dataset[train_ratio:]
+plt.imshow(x_train[0])
+plt.show()
+
 
 
 total_length = len(x_train)
@@ -85,6 +77,7 @@ train_step = train_loss = r_loss = kl_loss = None
 train_loss_list = []
 r_loss_list = []
 kl_loss_list = []
+loss_grads_list = []
 
 smoothing = 0.9
 
@@ -122,14 +115,18 @@ for epoch in range(NUM_EPOCH):
                         " r loss: ", epoch_r_loss,
                         " kl loss: ", epoch_kl_loss)
     # finished, final model:
-    vae.save_json("tf_vae/vae.json")
+    vae.save_json("tf_vae/vae-fetch.json")
 
     plt.plot(train_loss_list, label="total loss")
     plt.plot(r_loss_list, label="rec loss")
     plt.plot(kl_loss_list, label="kl loss")
     plt.legend()
-
     plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_history.pdf', format="pdf")
+
+    plt.close("all")
+    loss_grads_list.append(train_loss_list[-1] - train_loss_list[-2])
+    plt.plot(loss_grads_list)
+    plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_gradient.pdf', format="pdf")
 
     batch_z = vae.encode(x_test[:batch_size])
     reconstruct = vae.decode(batch_z)
