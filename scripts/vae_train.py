@@ -118,7 +118,7 @@ for epoch in range(NUM_EPOCH):
                         " kl loss: ", epoch_kl_loss,
                         " derivative: ", loss_grads_list[-1])
     # finished, final model:
-    if epoch % 1 == 0:
+    if epoch % 10 == 0:
         vae.save_json("tf_vae/vae-fetch.json")
         plt.plot(train_loss_list, label="total loss")
         plt.plot(r_loss_list, label="rec loss")
