@@ -104,7 +104,7 @@ for epoch in range(NUM_EPOCH):
         if epoch > 0:
             loss_grads_list.append(train_loss_list[-1] - train_loss_list[-2])
         else:
-            loss_grads_list.append(train_loss_list[-1])
+            loss_grads_list.append(0)
 
     epoch_train_loss = np.mean(train_loss_list[-num_batches:])
     epoch_r_loss = np.mean(r_loss_list[-num_batches:])
