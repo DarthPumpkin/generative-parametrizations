@@ -51,6 +51,7 @@ class MPC:
 
         # for each timestep
         for t in range(self.horizon):
+            # FIXME: should we weigh the rewards with the probabilities of the predicted states?
             rewards += self.reward_function(all_states[:, t], goal=goal, actions=all_actions[:, t], dones=dones)
 
         max_reward_i = np.argmax(rewards)

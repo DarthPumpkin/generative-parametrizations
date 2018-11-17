@@ -12,17 +12,22 @@ from gpp.models import MDN_Model
 from gpp.models.utilities import get_observation_space, get_observations
 from gpp.mpc import MPC
 from gpp.dataset import EnvDataset
+from evaluate_mdn import evaluate as evaluate_mdn
+
 
 BATCH_SIZE = 32
-TRAINING_EPOCHS = 25
-N_EPISODES = 800
-EPISODE_LENGTH = 200
+TRAINING_EPOCHS = 100
+N_EPISODES = 1800
+EPISODE_LENGTH = 100
 OVERWRITE_EXISTING = False
 SAVE_GIFS = False
 
-MDN_COMPONENTS = 5
-MPC_HORIZON = 10
+MDN_COMPONENTS = 8
+MPC_HORIZON = 2
 MPC_SEQUENCES = 16000
+
+ENV_ID = 'FetchReachDense-v1'
+EXP_NAME = 'fetch_mdn'
 
 
 if __name__ == '__main__':
@@ -34,9 +39,8 @@ if __name__ == '__main__':
         print("No GPU found, proceeding with CPU...")
         device = torch.device("cpu")
 
-    # env = gym.make('FetchPickAndPlaceSphereDense-v1')
-    env = gym.make('FetchReachDense-v1')
-    raw_env = env.unwrapped # type: FetchReachEnv
+    env = gym.make(ENV_ID)
+    raw_env = env.unwrapped
 
     np_random = raw_env.np_random
     observation_space = get_observation_space(env)
@@ -45,8 +49,8 @@ if __name__ == '__main__':
 
     model = MDN_Model(n_inputs, n_outputs, MDN_COMPONENTS, np_random=np_random, device=device)
 
-    model_path = Path('./out/fetch_mdn_model.pkl')
-    data_path = Path('./out/fetch_mdn_data.pkl')
+    model_path = Path(f'./out/{EXP_NAME}_model.pkl')
+    data_path = Path(f'./out/{EXP_NAME}_data.pkl')
 
     do_train = True
     if model_path.exists():
@@ -78,8 +82,14 @@ if __name__ == '__main__':
             dataset.save(data_path)
         episodes = dataset.data
 
+        def epoch_callback(epoch, loss):
+            print(epoch, loss)
+            path = Path(f'./out/{EXP_NAME}_model_e{epoch}.pkl')
+            model.save(path)
+            evaluate_mdn(path, ENV_ID)
+
         print('Training...')
-        losses = model.train(episodes, TRAINING_EPOCHS, batch_size=BATCH_SIZE)
+        losses = model.train(episodes, TRAINING_EPOCHS, batch_size=BATCH_SIZE, epoch_callback=epoch_callback)
 
         print('Saving model...')
         model.save(model_path)
