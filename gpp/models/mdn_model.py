@@ -41,7 +41,7 @@ class MDN_Model(BaseModel):
         with open(file_path, 'wb') as f:
             pickle.dump(self, f)
 
-    def train(self, episodes: Sequence[Tuple[np.ndarray]], epochs: int=None, batch_size: int=None):
+    def train(self, episodes: Sequence[Tuple[np.ndarray]], epochs: int=None, batch_size: int=None, epoch_callback=None):
 
         if not epochs:
             raise ValueError("Missing required kwarg: epochs")
@@ -76,9 +76,14 @@ class MDN_Model(BaseModel):
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-                losses[t] += 1.0 * loss.data.item() / x_batch.shape[0]
+                losses[t] += loss.item()
 
-            print(t, losses[t])
+            losses[t] /= x_batch.shape[0]
+
+            if callable(epoch_callback):
+                epoch_callback(t, losses[t])
+            else:
+                print(t, losses[t])
 
         return losses
 
