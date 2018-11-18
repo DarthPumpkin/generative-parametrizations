@@ -10,6 +10,7 @@ from tqdm import tqdm
 from gpp.world_models_vae import ConvVAE
 import zipfile
 import matplotlib.pyplot as plt
+import tensorflow as tf
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu systems
 
@@ -77,14 +78,25 @@ kl_loss_list = []
 loss_grads_list = []
 
 smoothing = 0.9
+disentanglement = 100
+max_capacity = 10
+capacity_change_duration = 10000
 
 for epoch in range(NUM_EPOCH):
     np.random.shuffle(x_train)
     for idx in tqdm(range(num_batches)):
         batch = x_train[idx * batch_size:(idx + 1) * batch_size]
 
+        step = epoch * num_batches + idx
+        if step > capacity_change_duration:
+            c = max_capacity
+        else:
+            c = max_capacity * (step / capacity_change_duration)
+
         obs = batch.astype(np.float)
-        feed = {vae.x: obs, }
+        feed = {vae.x: obs,
+                vae.beta: disentanglement,
+                vae.capacity: c}
 
         (train_loss, r_loss, kl_loss, train_step, _) = vae.sess.run([vae.loss,
                                                                      vae.r_loss,
