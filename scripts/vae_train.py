@@ -78,9 +78,9 @@ kl_loss_list = []
 loss_grads_list = []
 
 smoothing = 0.9
-disentanglement = 150
+init_disentanglement = disentanglement = 150
 max_capacity = 10
-capacity_change_duration = num_batches * 100  # arbitrary: 100 epochs of disentanglement
+capacity_change_duration = num_batches * 100  # arbitrary: = 100 epochs of disentanglement
 
 for epoch in range(NUM_EPOCH):
     np.random.shuffle(x_train)
@@ -93,9 +93,9 @@ for epoch in range(NUM_EPOCH):
         else:
             # increase capacity (from paper)
             c = max_capacity * (step / capacity_change_duration)
-            # dynamic beta (my experiment)
-            disentanglement *= 1-(step / capacity_change_duration)
 
+        # dynamic beta (my experiment)
+        disentanglement = max(1, init_disentanglement * (1-(step / capacity_change_duration)))
 
         obs = batch.astype(np.float)
         feed = {vae.x: obs,
@@ -133,9 +133,10 @@ for epoch in range(NUM_EPOCH):
                         " train loss: ", epoch_train_loss,
                         " r loss: ", epoch_r_loss,
                         " kl loss: ", epoch_kl_loss,
-                        " derivative: ", loss_grads_list[-1])
+                        " derivative: ", loss_grads_list[-1],
+                        " last beta: ", disentanglement)
     # finished, final model:
-    if epoch % 1 == 0:
+    if epoch % 10 == 0:
         vae.save_json("tf_vae/vae-fetch{}.json".format(epoch))
         plt.plot(train_loss_list, label="total loss")
         plt.plot(r_loss_list, label="rec loss")
@@ -153,7 +154,7 @@ for epoch in range(NUM_EPOCH):
         reconstruct = (reconstruct * 255).astype(np.uint8)
         im2print = 10
 
-        print(np.mean(batch_z, axis=1))
+        #print(batch_z)
 
         # if epoch > 200 and epoch % 50 == 0:
         #     orig = batch_z
