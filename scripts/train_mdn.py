@@ -16,18 +16,18 @@ from evaluate_mdn import evaluate as evaluate_mdn
 
 
 BATCH_SIZE = 32
-TRAINING_EPOCHS = 100
+TRAINING_EPOCHS = 6
 N_EPISODES = 1800
 EPISODE_LENGTH = 100
 OVERWRITE_EXISTING = False
 SAVE_GIFS = False
 
-MDN_COMPONENTS = 8
-MPC_HORIZON = 2
-MPC_SEQUENCES = 16000
+MDN_COMPONENTS = 6
+MPC_HORIZON = 20
+MPC_SEQUENCES = 2600
 
 ENV_ID = 'FetchReachDense-v1'
-EXP_NAME = 'fetch_mdn'
+EXP_NAME = 'fetch_mdn_clamp_6comp'
 
 
 if __name__ == '__main__':
@@ -50,7 +50,8 @@ if __name__ == '__main__':
     model = MDN_Model(n_inputs, n_outputs, MDN_COMPONENTS, np_random=np_random, device=device)
 
     model_path = Path(f'./out/{EXP_NAME}_model.pkl')
-    data_path = Path(f'./out/{EXP_NAME}_data.pkl')
+    #data_path = Path(f'./out/{EXP_NAME}_data.pkl')
+    data_path = Path(f'./out/fetch_mdn_data2.pkl')
 
     do_train = True
     if model_path.exists():

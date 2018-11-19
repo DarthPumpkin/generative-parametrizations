@@ -8,7 +8,7 @@ from torch import tensor
 
 from gpp.models.utilities import merge_episodes
 from . import BaseModel
-from ..mdn import MDN, sample_gmm_torch, mdn_loss
+from ..mdn import MDN, sample_gmm_torch, mdn_loss, log_likelihoods
 
 
 class MDN_Model(BaseModel):
@@ -95,6 +95,7 @@ class MDN_Model(BaseModel):
             state_size, = initial_state.shape
             self._check_input_sizes(state_size, action_size)
             outputs = torch.zeros((n_sequences, horizon, state_size))
+            output_likelihoods = torch.zeros((n_sequences, horizon, state_size))
             action_sequences = torch.Tensor(action_sequences).to(self.device)
 
             curr_states = torch.Tensor(initial_state).to(self.device)
@@ -104,9 +105,11 @@ class MDN_Model(BaseModel):
                 input_ = torch.cat([curr_states, action_sequences[:, t, :]], dim=1)
                 pi, mu, sig2 = self.mdn.forward(input_)
                 curr_states = sample_gmm_torch(pi, mu, sig2)
+                likelihoods = log_likelihoods(pi, mu, sig2, curr_states)
                 outputs[:, t, :] = curr_states
+                output_likelihoods[:, t, :] = likelihoods
 
-        return outputs.cpu().numpy()
+        return outputs.cpu().numpy(), output_likelihoods.cpu().numpy()
 
     def __getstate__(self):
         odict = self.__dict__.copy()

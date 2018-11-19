@@ -47,6 +47,14 @@ def mdn_loss(pi, mu, sig2, y):
     return torch.mean(likelihoods)
 
 
+def log_likelihoods(pi, mu, sig2, y):
+    n, m, k = pi.shape
+    pi, mu, sig2 = [z.reshape(n * m, k) for z in (pi, mu, sig2)]
+    y = y.reshape(n * m, 1)
+    likelihoods = -1.0 * _gmm_neg_log_likelihood(pi, mu, sig2, y)
+    return likelihoods.reshape(n, m)
+
+
 def sample_gmm_torch(pi: torch.Tensor, mu: torch.Tensor, sig2: torch.Tensor) -> torch.Tensor:
     """
     Takes one sample for each of the n GMMs

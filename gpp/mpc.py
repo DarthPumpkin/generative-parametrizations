@@ -35,7 +35,7 @@ class MPC:
         else:
             raise NotImplementedError
 
-        all_states = self.model.forward_sim(all_actions, current_state.copy())
+        all_states, likelihoods = self.model.forward_sim(all_actions, current_state.copy())
 
         if hasattr(self.env.unwrapped, 'goal'):
             goal = self.env.unwrapped.goal
