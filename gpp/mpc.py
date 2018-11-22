@@ -35,7 +35,7 @@ class MPC:
         else:
             raise NotImplementedError
 
-        all_states, likelihoods = self.model.forward_sim(all_actions, current_state.copy())
+        all_states = self.model.forward_sim(all_actions, current_state.copy())
 
         if hasattr(self.env.unwrapped, 'goal'):
             goal = self.env.unwrapped.goal
@@ -51,10 +51,9 @@ class MPC:
 
         # for each timestep
         for t in range(self.horizon):
-            # FIXME: should we weigh the rewards with the probabilities of the predicted states?
             rewards += self.reward_function(all_states[:, t], goal=goal, actions=all_actions[:, t], dones=dones)
 
-        max_reward_i = np.argmax(rewards)
+        max_reward_i = rewards.argmax()
         best_action = all_actions[max_reward_i, 0]
 
         return best_action
