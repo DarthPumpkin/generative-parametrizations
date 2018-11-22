@@ -5,6 +5,7 @@ from typing import Sequence, Tuple
 import numpy as np
 import torch
 from torch import tensor
+from sklearn.preprocessing import StandardScaler
 
 from gpp.models.utilities import merge_episodes
 from . import BaseModel
@@ -18,6 +19,8 @@ class MDN_Model(BaseModel):
         self.n_inputs, self.n_outputs, self.n_components = n_inputs, n_outputs, n_components
         self.mdn = MDN(n_inputs, n_outputs, n_components)
         self.device = device
+        self._state_scaler = None
+        self._action_scaler = None
 
     @property
     def device(self):
@@ -42,7 +45,7 @@ class MDN_Model(BaseModel):
         with open(file_path, 'wb') as f:
             pickle.dump(self, f)
 
-    def train(self, episodes: Sequence[Tuple[np.ndarray]], epochs: int=None, batch_size: int=None, epoch_callback=None):
+    def train(self, episodes: Sequence[Tuple[np.ndarray]], epochs: int=None, batch_size: int=None, epoch_callback=None, scale_data=False):
 
         if not epochs:
             raise ValueError("Missing required kwarg: epochs")
@@ -54,6 +57,19 @@ class MDN_Model(BaseModel):
         self._check_input_sizes(action_size, state_size)
         x_array, y_array = merge_episodes(episodes)
         optimizer = torch.optim.Adam(self.mdn.parameters())
+
+        if scale_data:
+            x_states = x_array[:, :state_size]
+            x_actions = x_array[:, state_size:]
+
+            self._state_scaler = StandardScaler()
+            self._state_scaler.fit(x_states)
+            self._action_scaler = StandardScaler()
+            self._action_scaler.fit(x_actions)
+
+            self._state_scaler.transform(x_states, copy=False)
+            self._state_scaler.transform(y_array, copy=False)
+            self._action_scaler.transform(x_actions, copy=False)
 
         n_batches = int(np.ceil(1.0 * x_array.shape[0] / batch_size))
         losses = np.zeros(epochs)
@@ -93,6 +109,17 @@ class MDN_Model(BaseModel):
         with torch.no_grad():
 
             n_sequences, horizon, action_size = action_sequences.shape
+
+            if self._action_scaler is not None:
+                # scale input actions
+                reshaped = action_sequences.reshape(n_sequences * horizon, -1)
+                self._action_scaler.transform(reshaped, copy=False)
+
+            if self._state_scaler is not None:
+                # scale initial state
+                initial_state = initial_state.copy()
+                self._state_scaler.transform(initial_state.reshape(1, -1), copy=False)
+
             state_size, = initial_state.shape
             self._check_input_sizes(state_size, action_size)
             outputs = torch.zeros((n_sequences, horizon, state_size))
@@ -110,7 +137,15 @@ class MDN_Model(BaseModel):
                 outputs[:, t, :] = curr_states
                 output_likelihoods[:, t, :] = likelihoods
 
-        return outputs.cpu().numpy(), output_likelihoods.cpu().numpy()
+        likelihoods = output_likelihoods.cpu().numpy()
+        outputs = outputs.cpu().numpy()
+
+        if self._state_scaler is not None:
+            # scale back output states
+            reshaped = outputs.reshape(n_sequences * horizon, -1)
+            self._state_scaler.inverse_transform(reshaped, copy=False)
+
+        return outputs, likelihoods
 
     def __getstate__(self):
         odict = self.__dict__.copy()
@@ -123,6 +158,9 @@ class MDN_Model(BaseModel):
         # for compatibility with older models
         if 'device' in odict.keys():
             del odict['device']
+        if '_action_scaler' not in odict.keys():
+            odict['_action_scaler'] = None
+            odict['_state_scaler'] = None
 
         self.__dict__.update(odict)
         self.mdn = MDN(self.n_inputs, self.n_outputs, self.n_components)

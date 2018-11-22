@@ -23,11 +23,11 @@ OVERWRITE_EXISTING = False
 SAVE_GIFS = False
 
 MDN_COMPONENTS = 6
-MPC_HORIZON = 20
-MPC_SEQUENCES = 2600
+MPC_HORIZON = 5
+MPC_SEQUENCES = 18000
 
 ENV_ID = 'FetchReachDense-v1'
-EXP_NAME = 'fetch_mdn_clamp_6comp'
+EXP_NAME = 'fetch_mdn_scaled_6comp'
 
 
 if __name__ == '__main__':
@@ -90,7 +90,7 @@ if __name__ == '__main__':
             evaluate_mdn(path, ENV_ID)
 
         print('Training...')
-        losses = model.train(episodes, TRAINING_EPOCHS, batch_size=BATCH_SIZE, epoch_callback=epoch_callback)
+        losses = model.train(episodes, TRAINING_EPOCHS, batch_size=BATCH_SIZE, epoch_callback=epoch_callback, scale_data=True)
 
         print('Saving model...')
         model.save(model_path)
