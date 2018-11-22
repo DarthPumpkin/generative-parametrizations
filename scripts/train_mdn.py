@@ -59,7 +59,7 @@ if __name__ == '__main__':
         if OVERWRITE_EXISTING:
             print('Overwriting...')
         else:
-            model = MDN_Model.load(model_path)
+            model = MDN_Model.load(model_path, device)
             do_train = False
     else:
         print('Existing model not found.')

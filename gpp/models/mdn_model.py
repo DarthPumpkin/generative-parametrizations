@@ -29,11 +29,12 @@ class MDN_Model(BaseModel):
         self._device = value
 
     @staticmethod
-    def load(file_path: Path):
+    def load(file_path: Path, device=torch.device("cpu")):
         with open(file_path, 'rb') as f:
             model = pickle.load(f)
             if not isinstance(model, MDN_Model):
                 raise ValueError(f'Cannot load object of type {type(model)}!')
+            model.device = device
             return model
 
     def save(self, file_path: Path):
@@ -121,13 +122,12 @@ class MDN_Model(BaseModel):
 
         # for compatibility with older models
         if 'device' in odict.keys():
-            odict['_device'] = odict['device']
             del odict['device']
 
         self.__dict__.update(odict)
         self.mdn = MDN(self.n_inputs, self.n_outputs, self.n_components)
         self.mdn.load_state_dict(odict['_mdn_state_dict'])
-        self.device = self._device
+        self.device = torch.device('cpu')
 
     def _get_state_dict(self):
         state_dict = self.mdn.cpu().state_dict()
