@@ -16,6 +16,14 @@ def _setup_fetch_sphere_big(env):
     model.site_size[target_site_i] *= 1.5
 
 
+def _reset_pendulum_var_length(env):
+    raw_env = env.unwrapped
+    raw_env.sampled_mass = np.random.uniform(0.05, 1.5)
+    scale_range = (0.2, 1.2)
+    new_scale = np.clip((raw_env.sampled_mass + 0.2) * 0.7, *scale_range)
+    raw_env.length_scale = new_scale
+
+
 CONFIGS = dict(
     pendulum=dict(
         env='Pendulum-v0',
@@ -37,6 +45,13 @@ CONFIGS = dict(
         episode_length=5,
         rgb_options=dict(camera_id=3),
         env_setup=_setup_fetch_sphere_big
+    ),
+    pendulum_var_length=dict(
+        env='Pendulum-v0',
+        size=(256, 256),
+        episodes=200,
+        episode_length=5,
+        env_reset=_reset_pendulum_var_length
     )
 )
 
@@ -49,6 +64,7 @@ def generate(config_name: str):
     img_size = config.get('size', (256, 256))
     rgb_options = config.get('rgb_options', None)
     env_setup = config.get('env_setup', None)
+    env_reset = config.get('env_reset', None)
 
     file_path = f'../data/{config_name}_imgs.npz'
     if Path(file_path).exists():
@@ -69,6 +85,8 @@ def generate(config_name: str):
 
     for e in range(episodes):
         env.reset()
+        if callable(env_reset):
+            env_reset(env)
         for s in range(episode_length):
             img = env.render(**render_kwargs)
             img = resize(img, dsize=img_size, interpolation=INTER_AREA)
