@@ -18,13 +18,16 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu syst
 np.set_printoptions(precision=4, edgeitems=6, linewidth=100, suppress=True)
 
 # Hyperparameters for ConvVAE
-z_size = 64
+z_size = 32
 batch_size = 32
 learning_rate = 0.001
 kl_tolerance = 0.5
+# loss options
+kl_option = 2
+reconstruction_option = 0
 
 # Parameters for training
-NUM_EPOCH = 5000
+NUM_EPOCH = 1000
 DATA_DIR = "record"
 IMG_OUTPUT_DIR = './out'
 
@@ -39,7 +42,7 @@ if pendulum_data:
     dataset = np.load(os.path.join(data_path, 'pendulum_imgs.npy'))
     dataset = dataset[:, 60:190, 60:190]
 else:  # fetch_sphere env
-    dataset = np.load(os.path.join(data_path, 'fetch_sphere_imgs.npz'))
+    dataset = np.load(os.path.join(data_path, 'fetch_sphere_big_imgs.npz'))
     dataset = dataset['arr_0']
 
 np.random.shuffle(dataset)
@@ -54,7 +57,10 @@ x_test = dataset[train_ratio:]
 
 total_length = len(x_train)
 num_batches = int(np.floor(total_length / batch_size))
-print("num_batches", num_batches)
+print("num_batches: ", num_batches)
+print("kl_option: ", kl_option)
+print("rec_option: ", reconstruction_option)
+
 
 # reset_graph()
 
@@ -65,11 +71,13 @@ vae = ConvVAE(z_size=z_size,
               is_training=True,
               reuse=False,
               gpu_mode=False,
+              reconstruction_option=reconstruction_option,
+              kl_option=kl_option,
               )
 # vae.load_json("tf_vae/vae-fetch.json")
 
 # train loop:
-print("train", "step", "loss", "recon_loss", "kl_loss")
+#print("train", "step", "loss", "recon_loss", "kl_loss")
 train_step = train_loss = r_loss = kl_loss = None
 
 train_loss_list = []
@@ -79,23 +87,24 @@ loss_grads_list = []
 
 smoothing = 0.9
 init_disentanglement = disentanglement = 150
-max_capacity = 10
+max_capacity = 25
 capacity_change_duration = num_batches * 100  # arbitrary: = 100 epochs of disentanglement
 
 for epoch in range(NUM_EPOCH):
     np.random.shuffle(x_train)
     for idx in tqdm(range(num_batches)):
         batch = x_train[idx * batch_size:(idx + 1) * batch_size]
-
         step = epoch * num_batches + idx
-        if step > capacity_change_duration:
-            c = max_capacity
-        else:
-            # increase capacity (from paper)
-            c = max_capacity * (step / capacity_change_duration)
 
-        # dynamic beta (my experiment)
-        disentanglement = max(1, init_disentanglement * (1-(step / capacity_change_duration)))
+        # OPTION 1: moving c (increase capacity, from paper)
+        if kl_option == 1:
+            if step > capacity_change_duration:
+                c = max_capacity
+            else:
+                c = max_capacity * (step / capacity_change_duration)
+        if kl_option == 2:
+            # OPTION 2: dynamic beta (my experiment)
+            disentanglement = max(1, init_disentanglement * (1-(step / capacity_change_duration)))
 
         obs = batch.astype(np.float)
         feed = {vae.x: obs,
@@ -128,7 +137,7 @@ for epoch in range(NUM_EPOCH):
     epoch_kl_loss = np.mean(kl_loss_list[-num_batches:])
     epoch_gradient_loss = np.mean(loss_grads_list[-num_batches:])
 
-    epoch > 0 and print(" Epoch: ", epoch,
+    epoch == -1 and print(" Epoch: ", epoch,
                         " step: ", (train_step + 1),
                         " train loss: ", epoch_train_loss,
                         " r loss: ", epoch_r_loss,
@@ -181,5 +190,5 @@ for epoch in range(NUM_EPOCH):
             plt.imshow(reconstruct[i])
             plt.axis("off")
 
-        plt.savefig(f'{IMG_OUTPUT_DIR}/epoch_{epoch}_fig_{i}.png')
+        plt.savefig(f'{IMG_OUTPUT_DIR}/epoch_{epoch}_fig_.png')
         plt.close("all")
