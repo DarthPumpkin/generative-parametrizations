@@ -1,15 +1,48 @@
 import os
 import numpy as np
-from keras.datasets import cifar10, mnist
-import _gpp
-import datetime
 import cv2
 from tqdm import tqdm
-# from gpp.vae import ConvVAE
-from gpp.vae_modified_architecture import ConvVAE
-# from gpp.world_models_vae import ConvVAE
-import zipfile
+from gpp.world_models_vae import ConvVAE
 import matplotlib.pyplot as plt
+
+
+class TrainSetting:
+    def __init__(self, kl_opt, reconstruct_opt, b_in, name):
+        self.kl_opt = kl_opt,
+        self.reconstruct_opt = reconstruct_opt
+        self.b = b_in
+        self.name = name
+
+
+all_settings = []
+all_settings.append(TrainSetting(0, 0, 0, "kl0-rl0-b0"))
+all_settings.append(TrainSetting(0, 1, 0, "kl0-rl1-b0"))
+all_settings.append(TrainSetting(0, 2, 0, "kl0-rl2-b0"))
+
+all_settings.append(TrainSetting(1, 0, 10, "kl1-rl0-b10"))
+all_settings.append(TrainSetting(1, 1, 10, "kl1-rl1-b10"))
+all_settings.append(TrainSetting(1, 2, 10, "kl1-rl2-b10"))
+
+all_settings.append(TrainSetting(1, 0, 50, "kl1-rl0-b50"))
+all_settings.append(TrainSetting(1, 1, 50, "kl1-rl1-b50"))
+all_settings.append(TrainSetting(1, 2, 50, "kl1-rl2-b50"))
+
+all_settings.append(TrainSetting(1, 0, 100, "kl1-rl0-b100"))
+all_settings.append(TrainSetting(1, 1, 100, "kl1-rl1-b100"))
+all_settings.append(TrainSetting(1, 2, 100, "kl1-rl2-b100"))
+
+all_settings.append(TrainSetting(2, 0, 10, "kl2-rl0-b10"))
+all_settings.append(TrainSetting(2, 1, 10, "kl2-rl1-b10"))
+all_settings.append(TrainSetting(2, 2, 10, "kl2-rl2-b10"))
+
+all_settings.append(TrainSetting(2, 0, 50, "kl2-rl0-b50"))
+all_settings.append(TrainSetting(2, 1, 50, "kl2-rl1-b50"))
+all_settings.append(TrainSetting(2, 2, 50, "kl2-rl2-b50"))
+
+all_settings.append(TrainSetting(2, 0, 100, "kl2-rl0-b100"))
+all_settings.append(TrainSetting(2, 1, 100, "kl2-rl1-b100"))
+all_settings.append(TrainSetting(2, 2, 100, "kl2-rl2-b100"))
+
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu systems
 
@@ -17,13 +50,12 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu syst
 np.set_printoptions(precision=4, edgeitems=6, linewidth=100, suppress=True)
 
 # Hyperparameters for ConvVAE
-z_size = 16
-batch_size = 128
+z_size = 32
+batch_size = 32
 learning_rate = 0.001
 kl_tolerance = 0.5
-
 # Parameters for training
-NUM_EPOCH = 5000
+NUM_EPOCH = 1000
 DATA_DIR = "record"
 IMG_OUTPUT_DIR = './out'
 
@@ -45,7 +77,7 @@ np.random.shuffle(dataset)
 dataset = dataset / 255.
 new_data = []
 for i, d in enumerate(dataset):
-    new_data.append(cv2.resize(d, (32, 32), interpolation=cv2.INTER_AREA))
+    new_data.append(cv2.resize(d, (64, 64), interpolation=cv2.INTER_AREA))
 dataset = np.array(new_data)
 train_ratio = int(0.8 * len(dataset))
 x_train = dataset[:train_ratio]
@@ -53,111 +85,105 @@ x_test = dataset[train_ratio:]
 
 total_length = len(x_train)
 num_batches = int(np.floor(total_length / batch_size))
-print("num_batches", num_batches)
+for setting in all_settings:
+    print("Start setting: {}".format(setting.name))
+    vae = ConvVAE(z_size=z_size, batch_size=batch_size, learning_rate=learning_rate, kl_tolerance=kl_tolerance,
+                  is_training=True, reuse=False, gpu_mode=False, reconstruction_option=setting.reconstruct_opt,
+                  kl_option=setting.kl_opt)
+    # vae.load_json("tf_vae/vae-fetch.json")
+    # train loop:
+    train_step = train_loss = r_loss = kl_loss = None
 
-# reset_graph()
+    train_loss_list = r_loss_list = kl_loss_list = loss_grads_list = []
+    smoothing = 0.9
+    init_disentanglement = disentanglement = setting.b  # B
+    max_capacity = 25
+    capacity_change_duration = num_batches * 100  # arbitrary: = 100 epochs of disentanglement
+    c = 0
 
-vae = ConvVAE(z_size=z_size,
-              batch_size=batch_size,
-              learning_rate=learning_rate,
-              kl_tolerance=kl_tolerance,
-              is_training=True,
-              reuse=False,
-              gpu_mode=False,
-              )
-# vae.load_json("tf_vae/vae-fetch.json")
+    for epoch in range(NUM_EPOCH):
+        np.random.shuffle(x_train)
+        for idx in tqdm(range(num_batches)):
+            batch = x_train[idx * batch_size:(idx + 1) * batch_size]
+            step = epoch * num_batches + idx
+            if setting.kl_opt == 1:  # OPTION 1: moving c (increase capacity, from paper)
+                c = max_capacity if step > capacity_change_duration else max_capacity * (step / capacity_change_duration)
+            if setting.kl_opt == 2:  # OPTION 2: dynamic beta (my experiment)
+                disentanglement = max(1, init_disentanglement * (1 - (step / capacity_change_duration)))
 
-# train loop:
-print("train", "step", "loss", "recon_loss", "kl_loss")
-train_step = train_loss = r_loss = kl_loss = None
+            feed = {vae.x: batch.astype(np.float), vae.beta: disentanglement, vae.capacity: c}
+            (train_loss, r_loss, kl_loss, train_step, _) = vae.sess.run([vae.loss, vae.r_loss, vae.kl_loss, vae.global_step,
+                                                                         vae.train_op], feed)
+            # if epoch == idx == 0:
+            #     train_loss_list.append(train_loss)
+            #     r_loss_list.append(r_loss)
+            #     kl_loss_list.append(kl_loss)
+            #
+            # train_loss_list.append(train_loss_list[-1]*smoothing+train_loss*(1-smoothing))
+            # r_loss_list.append(r_loss_list[-1] * smoothing + r_loss * (1-smoothing))
+            # kl_loss_list.append(kl_loss_list[-1] * smoothing + kl_loss*(1-smoothing))
+            # if epoch > 0:
+            #     loss_grads_list.append(loss_grads_list[-1]*smoothing +
+            #                            (train_loss_list[-1] - train_loss_list[-2])*(1 - smoothing))
+            # else:
+            #     loss_grads_list.append(0)
 
-train_loss_list = []
-r_loss_list = []
-kl_loss_list = []
-loss_grads_list = []
+        # epoch_train_loss = np.mean(train_loss_list[-num_batches:])
+        # epoch_r_loss = np.mean(r_loss_list[-num_batches:])
+        # epoch_kl_loss = np.mean(kl_loss_list[-num_batches:])
+        # epoch_gradient_loss = np.mean(loss_grads_list[-num_batches:])
 
-smoothing = 0.9
+        # epoch == -1 and print(" Epoch: ", epoch,
+        #                     " step: ", (train_step + 1),
+        #                     " train loss: ", epoch_train_loss,
+        #                     " r loss: ", epoch_r_loss,
+        #                     " kl loss: ", epoch_kl_loss,
+        #                     " derivative: ", loss_grads_list[-1],
+        #                     " last beta: ", disentanglement)
+        # finished, final model:
+        if epoch % 20 == 0:
+            vae.save_json("tf_vae/{}vae-fetch{}.json".format(setting.name, epoch))
+            # plt.plot(train_loss_list, label="total loss")
+            # plt.plot(r_loss_list, label="rec loss")
+            # plt.plot(kl_loss_list, label="kl loss")
+            # plt.legend()
+            # plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_history.pdf', format="pdf")
+            # plt.close("all")
+            # plt.grid(True)
+            # plt.plot(loss_grads_list)
+            # plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_gradient.pdf', format="pdf")
 
-for epoch in range(NUM_EPOCH):
-    np.random.shuffle(x_train)
-    for idx in tqdm(range(num_batches)):
-        batch = x_train[idx * batch_size:(idx + 1) * batch_size]
+            batch_z = vae.encode(x_test[:batch_size])
+            reconstruct = vae.decode(batch_z)
+            reconstruct = (reconstruct * 255).astype(np.uint8)
+            im2print = 10
 
-        obs = batch.astype(np.float)
-        feed = {vae.x: obs, }
+            #print(batch_z)
 
-        (train_loss, r_loss, kl_loss, train_step, _) = vae.sess.run([vae.loss,
-                                                                     vae.r_loss,
-                                                                     vae.kl_loss,
-                                                                     vae.global_step,
-                                                                     vae.train_op],
-                                                                    feed)
+            # if epoch > 200 and epoch % 50 == 0:
+            #     orig = batch_z
+            #     values = np.linspace(-4, 4, 50)
+            #     p_count = 1
+            #     for i in range(batch_z.shape[1]):
+            #         batch_z = orig.copy()
+            #         for j, n in enumerate(values):
+            #             batch_z[0][i] = n
+            #             reconstruct = (vae.decode(batch_z) * 255).astype(np.uint8)
+            #             plt.subplot(16, 50, p_count)
+            #             plt.imshow(reconstruct[0])
+            #             plt.axis("off")
+            #             p_count += 1
+            #     plt.show()
 
-        if epoch == 0 and idx == 0:
-            train_loss_list.append(train_loss)
-            r_loss_list.append(r_loss)
-            kl_loss_list.append(kl_loss)
+            for i in range(im2print):
+                plt.subplot(im2print, 2, 1+2*i)
+                original = x_test[i].clip(0, 1)
+                plt.imshow(original)
+                plt.axis("off")
 
-        train_loss_list.append(train_loss_list[-1]*smoothing+train_loss*(1-smoothing))
-        r_loss_list.append(r_loss_list[-1] * smoothing + r_loss * (1-smoothing))
-        kl_loss_list.append(kl_loss_list[-1] * smoothing + kl_loss*(1-smoothing))
-        if epoch > 0:
-            loss_grads_list.append(train_loss_list[-1] - train_loss_list[-2])
-        else:
-            loss_grads_list.append(0)
+                plt.subplot(im2print, 2, 2+2*i)
+                plt.imshow(reconstruct[i])
+                plt.axis("off")
 
-    epoch_train_loss = np.mean(train_loss_list[-num_batches:])
-    epoch_r_loss = np.mean(r_loss_list[-num_batches:])
-    epoch_kl_loss = np.mean(kl_loss_list[-num_batches:])
-    epoch_gradient_loss = np.mean(loss_grads_list[-num_batches:])
-
-    epoch > 0 and print(" Epoch: ", epoch,
-                        " step: ", (train_step + 1),
-                        " train loss: ", epoch_train_loss,
-                        " r loss: ", epoch_r_loss,
-                        " kl loss: ", epoch_kl_loss,
-                        " derivative: ", loss_grads_list[-1])
-    # finished, final model:
-    if epoch % 10 == 0:
-        vae.save_json("tf_vae/vae-fetch{}.json".format(epoch))
-        plt.plot(train_loss_list, label="total loss")
-        plt.plot(r_loss_list, label="rec loss")
-        plt.plot(kl_loss_list, label="kl loss")
-        plt.legend()
-        plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_history.pdf', format="pdf")
-
-        plt.close("all")
-        plt.plot(loss_grads_list)
-        plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_gradient.pdf', format="pdf")
-
-        batch_z = vae.encode(x_test[:batch_size])
-        reconstruct = vae.decode(batch_z)
-        reconstruct = (reconstruct * 255).astype(np.uint8)
-        im2print = 10
-        # if epoch > 200 and epoch % 50 == 0:
-        #     orig = batch_z
-        #     values = np.linspace(-4, 4, 50)
-        #     p_count = 1
-        #     for i in range(batch_z.shape[1]):
-        #         batch_z = orig.copy()
-        #         for j, n in enumerate(values):
-        #             batch_z[0][i] = n
-        #             reconstruct = (vae.decode(batch_z) * 255).astype(np.uint8)
-        #             plt.subplot(16, 50, p_count)
-        #             plt.imshow(reconstruct[0])
-        #             plt.axis("off")
-        #             p_count += 1
-        #     plt.show()
-
-        for i in range(im2print):
-            plt.subplot(im2print, 2, 1+2*i)
-            original = x_test[i].clip(0, 1)
-            plt.imshow(original)
-            plt.axis("off")
-
-            plt.subplot(im2print, 2, 2+2*i)
-            plt.imshow(reconstruct[i])
-            plt.axis("off")
-
-        plt.savefig(f'{IMG_OUTPUT_DIR}/epoch_{epoch}_fig_{i}.png')
-        plt.close("all")
+            plt.savefig(f'{IMG_OUTPUT_DIR}/{setting.name}epoch_{epoch}_fig_.png')
+            plt.close("all")

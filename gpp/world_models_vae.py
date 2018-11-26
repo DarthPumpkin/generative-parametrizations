@@ -12,13 +12,15 @@ def reset_graph():
 
 class ConvVAE(object):
     def __init__(self, z_size=32, batch_size=1, learning_rate=0.0001, kl_tolerance=0.5, is_training=False, reuse=False,
-                 gpu_mode=False):
+                 gpu_mode=False, reconstruction_option=0, kl_option=2):
         self.z_size = z_size
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.is_training = is_training
         self.kl_tolerance = kl_tolerance
         self.reuse = reuse
+        self.reconstruction_option = reconstruction_option
+        self.kl_option = kl_option
         with tf.variable_scope('conv_vae', reuse=self.reuse):
             if not gpu_mode:
                 with tf.device('/cpu:0'):
@@ -29,10 +31,24 @@ class ConvVAE(object):
                 self._build_graph()
         self._init_session()
 
+    @staticmethod
+    def crossEntropy(obs, actual, offset=1e-7):
+        """Binary cross-entropy, per training example
+        https://github.com/fastforwardlabs/vae-tf/blob/master/vae.py"""
+        # (tf.Tensor, tf.Tensor, float) -> tf.Tensor
+        with tf.name_scope("cross_entropy"):
+            # bound by clipping to avoid nan
+            obs_ = tf.clip_by_value(obs, offset, 1 - offset)
+            return tf.reduce_mean(-tf.reduce_sum(actual * tf.log(obs_) +
+                                  (1 - actual) * tf.log(1 - obs_), reduction_indices=[1, 2, 3]
+                    ))
+
     def _build_graph(self):
         self.g = tf.Graph()
         with self.g.as_default():
             self.x = tf.placeholder(tf.float32, shape=[None, 64, 64, 3])
+            self.capacity = tf.placeholder(tf.float32, shape=())
+            self.beta = tf.placeholder(tf.float32, shape=())
 
             # Encoder
             h = tf.layers.conv2d(self.x, 32, 4, strides=2, activation=tf.nn.relu, name="enc_conv1")
@@ -63,19 +79,47 @@ class ConvVAE(object):
                 eps = 1e-6  # avoid taking log of zero
 
                 # reconstruction loss
-                self.r_loss = tf.reduce_sum(
-                    tf.square(self.x - self.y),
-                    reduction_indices=[1, 2, 3]
-                )
-                self.r_loss = tf.reduce_mean(self.r_loss)
+                if self.reconstruction_option == 0:
+                    # OPTION A: MSE
+                    self.r_loss = tf.reduce_sum(
+                        tf.square(self.x - self.y),
+                        reduction_indices=[1, 2, 3]
+                    )
+                    self.r_loss = tf.reduce_mean(self.r_loss)
+
+                if self.reconstruction_option == 1:
+                    # OPTION B: crossEntropy
+                    # reconstruction loss: mismatch b/w x & x_reconstructed
+                    # binary cross-entropy -- assumes x & p(x|z) are iid Bernoullis
+                    self.r_loss = ConvVAE.crossEntropy(self.y, self.x)
+
+                if self.reconstruction_option == 2:
+                    # OPTION C: ABS
+                    self.r_loss = tf.reduce_sum(
+                        tf.abs(self.x - self.y),
+                        reduction_indices=[1, 2, 3]
+                    )
+                    self.r_loss = tf.reduce_mean(self.r_loss)
 
                 # augmented kl loss per dim
                 self.kl_loss = - 0.5 * tf.reduce_sum(
                     (1 + self.logvar - tf.square(self.mu) - tf.exp(self.logvar)),
                     reduction_indices=1
                 )
-                self.kl_loss = tf.maximum(self.kl_loss, self.kl_tolerance * self.z_size)
+
+                if self.kl_option == 0:
+                    # OPTION 0: kl clip // world models papers
+                    self.kl_loss = tf.maximum(self.kl_loss, self.kl_tolerance * self.z_size)
+
                 self.kl_loss = tf.reduce_mean(self.kl_loss)
+
+                if self.kl_option == 1:
+                    # OPTION 1: increase capacity // from deepmind paper
+                    self.kl_loss = self.beta * tf.abs(self.kl_loss - self.capacity)
+
+                if self.kl_option == 2:
+                    # OPTION 2: dynamic beta // my experiment
+                    self.kl_loss = self.beta * self.kl_loss
 
                 self.loss = self.r_loss + self.kl_loss
 
