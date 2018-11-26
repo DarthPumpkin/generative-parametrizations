@@ -10,6 +10,7 @@ from tqdm import tqdm
 from gpp.world_models_vae import ConvVAE
 import zipfile
 import matplotlib.pyplot as plt
+import tensorflow as tf
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu systems
 
@@ -77,14 +78,29 @@ kl_loss_list = []
 loss_grads_list = []
 
 smoothing = 0.9
+init_disentanglement = disentanglement = 150
+max_capacity = 10
+capacity_change_duration = num_batches * 100  # arbitrary: = 100 epochs of disentanglement
 
 for epoch in range(NUM_EPOCH):
     np.random.shuffle(x_train)
     for idx in tqdm(range(num_batches)):
         batch = x_train[idx * batch_size:(idx + 1) * batch_size]
 
+        step = epoch * num_batches + idx
+        if step > capacity_change_duration:
+            c = max_capacity
+        else:
+            # increase capacity (from paper)
+            c = max_capacity * (step / capacity_change_duration)
+
+        # dynamic beta (my experiment)
+        disentanglement = max(1, init_disentanglement * (1-(step / capacity_change_duration)))
+
         obs = batch.astype(np.float)
-        feed = {vae.x: obs, }
+        feed = {vae.x: obs,
+                vae.beta: disentanglement,
+                vae.capacity: c}
 
         (train_loss, r_loss, kl_loss, train_step, _) = vae.sess.run([vae.loss,
                                                                      vae.r_loss,
@@ -102,7 +118,8 @@ for epoch in range(NUM_EPOCH):
         r_loss_list.append(r_loss_list[-1] * smoothing + r_loss * (1-smoothing))
         kl_loss_list.append(kl_loss_list[-1] * smoothing + kl_loss*(1-smoothing))
         if epoch > 0:
-            loss_grads_list.append(train_loss_list[-1] - train_loss_list[-2])
+            loss_grads_list.append(loss_grads_list[-1]*smoothing +
+                                   (train_loss_list[-1] - train_loss_list[-2])*(1 - smoothing))
         else:
             loss_grads_list.append(0)
 
@@ -116,7 +133,8 @@ for epoch in range(NUM_EPOCH):
                         " train loss: ", epoch_train_loss,
                         " r loss: ", epoch_r_loss,
                         " kl loss: ", epoch_kl_loss,
-                        " derivative: ", loss_grads_list[-1])
+                        " derivative: ", loss_grads_list[-1],
+                        " last beta: ", disentanglement)
     # finished, final model:
     if epoch % 10 == 0:
         vae.save_json("tf_vae/vae-fetch{}.json".format(epoch))
@@ -127,6 +145,7 @@ for epoch in range(NUM_EPOCH):
         plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_history.pdf', format="pdf")
 
         plt.close("all")
+        plt.grid(True)
         plt.plot(loss_grads_list)
         plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_gradient.pdf', format="pdf")
 
@@ -134,6 +153,9 @@ for epoch in range(NUM_EPOCH):
         reconstruct = vae.decode(batch_z)
         reconstruct = (reconstruct * 255).astype(np.uint8)
         im2print = 10
+
+        #print(batch_z)
+
         # if epoch > 200 and epoch % 50 == 0:
         #     orig = batch_z
         #     values = np.linspace(-4, 4, 50)

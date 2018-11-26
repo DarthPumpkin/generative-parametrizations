@@ -33,6 +33,8 @@ class ConvVAE(object):
         self.g = tf.Graph()
         with self.g.as_default():
             self.x = tf.placeholder(tf.float32, shape=[None, 64, 64, 3])
+            self.capacity = tf.placeholder(tf.float32, shape=())
+            self.beta = tf.placeholder(tf.float32, shape=())
 
             # Encoder
             h = tf.layers.conv2d(self.x, 32, 4, strides=2, activation=tf.nn.relu, name="enc_conv1")
@@ -74,8 +76,11 @@ class ConvVAE(object):
                     (1 + self.logvar - tf.square(self.mu) - tf.exp(self.logvar)),
                     reduction_indices=1
                 )
-                self.kl_loss = tf.maximum(self.kl_loss, self.kl_tolerance * self.z_size)
+
+                # self.kl_loss = tf.maximum(self.kl_loss, self.kl_tolerance * self.z_size) # comment for remove kl clip
                 self.kl_loss = tf.reduce_mean(self.kl_loss)
+                # self.kl_loss = self.beta * tf.abs(self.kl_loss - self.capacity) # increase capacity
+                self.kl_loss = self.beta * self.kl_loss  # dynamic beta // my experiment
 
                 self.loss = self.r_loss + self.kl_loss
 

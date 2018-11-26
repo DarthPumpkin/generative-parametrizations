@@ -33,6 +33,8 @@ class ConvVAE(object):
         self.g = tf.Graph()
         with self.g.as_default():
             self.x = tf.placeholder(tf.float32, shape=[None, 32, 32, 3])
+            self.capacity = tf.placeholder(tf.float32, shape=())
+            self.beta = tf.placeholder(tf.float32, shape=())
             # Encoder
             h = tf.layers.conv2d(self.x, 16, 4, strides=2, activation=tf.nn.relu, name="enc_conv1")
             print(h.get_shape().as_list())
@@ -80,10 +82,15 @@ class ConvVAE(object):
                     (1 + self.logvar - tf.square(self.mu) - tf.exp(self.logvar)),
                     reduction_indices=1
                 )
-                self.kl_loss = tf.maximum(self.kl_loss, self.kl_tolerance * self.z_size)
+
+                # comment for controlled capacity increase
+                # self.kl_loss = tf.maximum(self.kl_loss, self.kl_tolerance * self.z_size)
                 self.kl_loss = tf.reduce_mean(self.kl_loss)
 
                 self.loss = self.r_loss + self.kl_loss
+
+                # controlled encoding capacity increase
+                self.loss = self.r_loss + self.beta*tf.abs(self.kl_loss - self.capacity)
 
                 # training
                 self.lr = tf.Variable(self.learning_rate, trainable=False)
