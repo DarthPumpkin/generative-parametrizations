@@ -6,8 +6,8 @@ import datetime
 import cv2
 from tqdm import tqdm
 # from gpp.vae import ConvVAE
-# from gpp.vae_modified_architecture import ConvVAE
-from gpp.world_models_vae import ConvVAE
+from gpp.vae_modified_architecture import ConvVAE
+# from gpp.world_models_vae import ConvVAE
 import zipfile
 import matplotlib.pyplot as plt
 
@@ -17,8 +17,8 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu syst
 np.set_printoptions(precision=4, edgeitems=6, linewidth=100, suppress=True)
 
 # Hyperparameters for ConvVAE
-z_size = 64
-batch_size = 32
+z_size = 16
+batch_size = 128
 learning_rate = 0.001
 kl_tolerance = 0.5
 
@@ -38,14 +38,14 @@ if pendulum_data:
     dataset = np.load(os.path.join(data_path, 'pendulum_imgs.npy'))
     dataset = dataset[:, 60:190, 60:190]
 else:  # fetch_sphere env
-    dataset = np.load(os.path.join(data_path, 'fetch_sphere_imgs.npz'))
+    dataset = np.load(os.path.join(data_path, 'fetch_sphere_big_imgs.npz'))
     dataset = dataset['arr_0']
 
 np.random.shuffle(dataset)
 dataset = dataset / 255.
 new_data = []
 for i, d in enumerate(dataset):
-    new_data.append(cv2.resize(d, (64, 64), interpolation=cv2.INTER_AREA))
+    new_data.append(cv2.resize(d, (32, 32), interpolation=cv2.INTER_AREA))
 dataset = np.array(new_data)
 train_ratio = int(0.8 * len(dataset))
 x_train = dataset[:train_ratio]
