@@ -11,8 +11,8 @@ def reset_graph():
 
 
 class ConvVAE(object):
-    def __init__(self, z_size=32, batch_size=1, learning_rate=0.0001, kl_tolerance=0.5, is_training=False, reuse=False,
-                 gpu_mode=False, reconstruction_option=0, kl_option=2):
+    def __init__(self, z_size=32, batch_size=32, learning_rate=0.001, kl_tolerance=0.5, is_training=False, reuse=False,
+                 gpu_mode=False, reconstruction_option=1, kl_option=2):
         self.z_size = z_size
         self.batch_size = batch_size
         self.learning_rate = learning_rate
