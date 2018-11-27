@@ -2,6 +2,9 @@ import os
 import numpy as np
 import cv2
 from tqdm import tqdm
+
+import _gpp
+
 from gpp.world_models_vae import ConvVAE
 import matplotlib.pyplot as plt
 
@@ -21,23 +24,23 @@ all_settings.append(TrainSetting(0, 2, 0, "kl0-rl2-b0"))
 
 all_settings.append(TrainSetting(1, 0, 10, "kl1-rl0-b10"))
 all_settings.append(TrainSetting(1, 1, 10, "kl1-rl1-b10"))
-all_settings.append(TrainSetting(1, 2, 10, "kl1-rl2-b10"))
+#all_settings.append(TrainSetting(1, 2, 10, "kl1-rl2-b10"))
 
 all_settings.append(TrainSetting(1, 0, 50, "kl1-rl0-b50"))
 all_settings.append(TrainSetting(1, 1, 50, "kl1-rl1-b50"))
-all_settings.append(TrainSetting(1, 2, 50, "kl1-rl2-b50"))
+#all_settings.append(TrainSetting(1, 2, 50, "kl1-rl2-b50"))
 
 all_settings.append(TrainSetting(1, 0, 100, "kl1-rl0-b100"))
 all_settings.append(TrainSetting(1, 1, 100, "kl1-rl1-b100"))
-all_settings.append(TrainSetting(1, 2, 100, "kl1-rl2-b100"))
+#all_settings.append(TrainSetting(1, 2, 100, "kl1-rl2-b100"))
 
 all_settings.append(TrainSetting(2, 0, 10, "kl2-rl0-b10"))
 all_settings.append(TrainSetting(2, 1, 10, "kl2-rl1-b10"))
-all_settings.append(TrainSetting(2, 2, 10, "kl2-rl2-b10"))
+#all_settings.append(TrainSetting(2, 2, 10, "kl2-rl2-b10"))
 
 all_settings.append(TrainSetting(2, 0, 50, "kl2-rl0-b50"))
 all_settings.append(TrainSetting(2, 1, 50, "kl2-rl1-b50"))
-all_settings.append(TrainSetting(2, 2, 50, "kl2-rl2-b50"))
+#all_settings.append(TrainSetting(2, 2, 50, "kl2-rl2-b50"))
 
 all_settings.append(TrainSetting(2, 0, 100, "kl2-rl0-b100"))
 all_settings.append(TrainSetting(2, 1, 100, "kl2-rl1-b100"))
@@ -101,9 +104,9 @@ for setting in all_settings:
     capacity_change_duration = num_batches * 100  # arbitrary: = 100 epochs of disentanglement
     c = 0
 
-    for epoch in range(NUM_EPOCH):
+    for epoch in tqdm(range(NUM_EPOCH), desc='Epoch'):
         np.random.shuffle(x_train)
-        for idx in tqdm(range(num_batches)):
+        for idx in range(num_batches):
             batch = x_train[idx * batch_size:(idx + 1) * batch_size]
             step = epoch * num_batches + idx
             if setting.kl_opt == 1:  # OPTION 1: moving c (increase capacity, from paper)
@@ -141,7 +144,7 @@ for setting in all_settings:
         #                     " derivative: ", loss_grads_list[-1],
         #                     " last beta: ", disentanglement)
         # finished, final model:
-        if epoch % 20 == 0:
+        if epoch % 50 == 0:
             vae.save_json("tf_vae/{}vae-fetch{}.json".format(setting.name, epoch))
             # plt.plot(train_loss_list, label="total loss")
             # plt.plot(r_loss_list, label="rec loss")
