@@ -26,6 +26,8 @@ if __name__ == '__main__':
     sim.model.site_size[object_site_i] *= 1.5 * 2.0
     sim.model.site_size[target_site_i] *= 1.5
 
+    sim.model.site_rgba[object_site_i] = (1.0, 1.0, 0.0, 1.0)
+
     # this doesn't seem to work sadly!
     # sim.model.geom_size[23] *= 2.5
 
