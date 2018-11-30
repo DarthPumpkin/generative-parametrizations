@@ -14,10 +14,11 @@ from ..mdn import MDN, sample_gmm_torch, mdn_loss
 
 class MDN_Model(BaseModel):
 
-    def __init__(self, n_inputs, n_outputs, n_components, np_random=None, device=torch.device("cpu")):
+    def __init__(self, n_inputs, n_outputs, n_components, hidden_units=None, np_random=None, device=torch.device("cpu")):
         super().__init__(np_random=np_random)
         self.n_inputs, self.n_outputs, self.n_components = n_inputs, n_outputs, n_components
-        self.mdn = MDN(n_inputs, n_outputs, n_components)
+        self.mdn = MDN(n_inputs, n_outputs, n_components, hidden_units=hidden_units)
+        self.hidden_units = hidden_units
         self.device = device
         self._state_scaler = None
         self._action_scaler = None
@@ -137,6 +138,7 @@ class MDN_Model(BaseModel):
             for t in range(horizon):
                 input_ = torch.cat([curr_states, action_sequences[:, t, :]], dim=1)
                 pi, mu, sig2 = self.mdn.forward(input_)
+                # curr_states = (mu * pi).sum(dim=-1)
                 curr_states = sample_gmm_torch(pi, mu, sig2)
                 outputs[:, t, :] = curr_states
 
@@ -163,9 +165,11 @@ class MDN_Model(BaseModel):
         if '_action_scaler' not in odict.keys():
             odict['_action_scaler'] = None
             odict['_state_scaler'] = None
+        if 'hidden_units' not in odict.keys():
+            odict['hidden_units'] = None
 
         self.__dict__.update(odict)
-        self.mdn = MDN(self.n_inputs, self.n_outputs, self.n_components)
+        self.mdn = MDN(self.n_inputs, self.n_outputs, self.n_components, hidden_units=self.hidden_units)
         self.mdn.load_state_dict(odict['_mdn_state_dict'])
         self.device = torch.device('cpu')
 
