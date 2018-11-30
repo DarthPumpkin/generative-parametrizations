@@ -2,9 +2,11 @@
     1 - CREATE DATA USING TRAINED VAE  👍
     2 - SPLIT DATA INTO TRAIN / TEST SEQUENCES. START WITH 7 - 1 👍
     3 -  ?? NORMALIZE DATA ?? 👍 Might use different method
-    4 - CREATE LSTM MODEL
+    4 - CREATE ROLLING WINDOW DATA 💩
+    4 - CREATE LSTM MODEL 👍
     5 - TRAIN MODEL
     6 - EVALUATE RESULTS BY DECODING PREDICTED LATENT SPACES
+    7 - DO A TRAIN TEST SPLIT
 """
 import os
 from gpp.world_models_vae import ConvVAE
@@ -72,13 +74,13 @@ def build_model():
     model.summary()
 
     feed = np.zeros((32, 16,))
-    for i in range(32):
-        model.fit(x, y, batch_size=32, epochs=25, shuffle=False)
+    for i in range(200):
+        model.fit(x, y, batch_size=32, epochs=25, shuffle=False, validation_split=0.3)
         original_images = np.zeros((32, 16))
-        original_images[:steps] = x[i]
+        original_images[:steps] = x[-i]
         original_images = vae.decode(original_images)
 
-        feed[0] = model.predict(x)[i] * std + avg
+        feed[0] = model.predict(x)[-i] * std + avg
         predict_img = vae.decode(feed)
         original_images[steps] = predict_img[0]
         plot_previous_images(original_images, steps)

@@ -18,33 +18,34 @@ class TrainSetting:
 
 
 all_settings = []
-all_settings.append(TrainSetting(0, 0, 0, "kl0-rl0-b0"))
-all_settings.append(TrainSetting(0, 1, 0, "kl0-rl1-b0"))
-all_settings.append(TrainSetting(0, 2, 0, "kl0-rl2-b0"))
-
-all_settings.append(TrainSetting(1, 0, 10, "kl1-rl0-b10"))
-all_settings.append(TrainSetting(1, 1, 10, "kl1-rl1-b10"))
-#all_settings.append(TrainSetting(1, 2, 10, "kl1-rl2-b10"))
-
-all_settings.append(TrainSetting(1, 0, 50, "kl1-rl0-b50"))
-all_settings.append(TrainSetting(1, 1, 50, "kl1-rl1-b50"))
-#all_settings.append(TrainSetting(1, 2, 50, "kl1-rl2-b50"))
-
-all_settings.append(TrainSetting(1, 0, 100, "kl1-rl0-b100"))
-all_settings.append(TrainSetting(1, 1, 100, "kl1-rl1-b100"))
-#all_settings.append(TrainSetting(1, 2, 100, "kl1-rl2-b100"))
-
-all_settings.append(TrainSetting(2, 0, 10, "kl2-rl0-b10"))
-all_settings.append(TrainSetting(2, 1, 10, "kl2-rl1-b10"))
-#all_settings.append(TrainSetting(2, 2, 10, "kl2-rl2-b10"))
-
-all_settings.append(TrainSetting(2, 0, 50, "kl2-rl0-b50"))
-all_settings.append(TrainSetting(2, 1, 50, "kl2-rl1-b50"))
-#all_settings.append(TrainSetting(2, 2, 50, "kl2-rl2-b50"))
-
-all_settings.append(TrainSetting(2, 0, 100, "kl2-rl0-b100"))
-all_settings.append(TrainSetting(2, 1, 100, "kl2-rl1-b100"))
-all_settings.append(TrainSetting(2, 2, 100, "kl2-rl2-b100"))
+# all_settings.append(TrainSetting(0, 0, 0, "kl0-rl0-b0"))
+# all_settings.append(TrainSetting(0, 1, 0, "kl0-rl1-b0"))
+# all_settings.append(TrainSetting(0, 2, 0, "kl0-rl2-b0"))
+#
+# all_settings.append(TrainSetting(1, 0, 10, "kl1-rl0-b10"))
+# all_settings.append(TrainSetting(1, 1, 10, "kl1-rl1-b10"))
+# #all_settings.append(TrainSetting(1, 2, 10, "kl1-rl2-b10"))
+#
+# all_settings.append(TrainSetting(1, 0, 50, "kl1-rl0-b50"))
+# all_settings.append(TrainSetting(1, 1, 50, "kl1-rl1-b50"))
+# #all_settings.append(TrainSetting(1, 2, 50, "kl1-rl2-b50"))
+#
+# all_settings.append(TrainSetting(1, 0, 100, "kl1-rl0-b100"))
+# all_settings.append(TrainSetting(1, 1, 100, "kl1-rl1-b100"))
+# #all_settings.append(TrainSetting(1, 2, 100, "kl1-rl2-b100"))
+#
+# all_settings.append(TrainSetting(2, 0, 10, "kl2-rl0-b10"))
+# all_settings.append(TrainSetting(2, 1, 10, "kl2-rl1-b10"))
+# #all_settings.append(TrainSetting(2, 2, 10, "kl2-rl2-b10"))
+#
+# all_settings.append(TrainSetting(2, 0, 50, "kl2-rl0-b50"))
+# all_settings.append(TrainSetting(2, 1, 50, "kl2-rl1-b50"))
+# #all_settings.append(TrainSetting(2, 2, 50, "kl2-rl2-b50"))
+#
+# all_settings.append(TrainSetting(2, 0, 100, "kl2-rl0-b100"))
+# all_settings.append(TrainSetting(2, 1, 100, "kl2-rl1-b100"))
+# all_settings.append(TrainSetting(2, 2, 100, "kl2-rl2-b100"))
+all_settings.append(TrainSetting(2, 1, 100, "kl2-rl1-b100-colordataaset"))
 
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu systems
@@ -53,7 +54,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu syst
 np.set_printoptions(precision=4, edgeitems=6, linewidth=100, suppress=True)
 
 # Hyperparameters for ConvVAE
-z_size = 32
+z_size = 16
 batch_size = 32
 learning_rate = 0.001
 kl_tolerance = 0.5
@@ -73,7 +74,7 @@ if pendulum_data:
     dataset = np.load(os.path.join(data_path, 'pendulum_imgs.npy'))
     dataset = dataset[:, 60:190, 60:190]
 else:  # fetch_sphere env
-    dataset = np.load(os.path.join(data_path, 'fetch_sphere_big_imgs.npz'))
+    dataset = np.load(os.path.join(data_path, 'fetch_sphere_big_longer_color_imgs.npz'))
     dataset = dataset['arr_0']
 
 np.random.shuffle(dataset)
@@ -93,7 +94,7 @@ for setting in all_settings:
     vae = ConvVAE(z_size=z_size, batch_size=batch_size, learning_rate=learning_rate, kl_tolerance=kl_tolerance,
                   is_training=True, reuse=False, gpu_mode=False, reconstruction_option=setting.reconstruct_opt,
                   kl_option=setting.kl_opt)
-    # vae.load_json("tf_vae/vae-fetch.json")
+    vae.load_json("tf_vae/kl2-rl1-b100-colordataasetvae-fetch200.json")
     # train loop:
     train_step = train_loss = r_loss = kl_loss = None
 
