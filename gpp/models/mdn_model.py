@@ -45,7 +45,8 @@ class MDN_Model(BaseModel):
         with open(file_path, 'wb') as f:
             pickle.dump(self, f)
 
-    def train(self, episodes: Sequence[Tuple[np.ndarray]], epochs: int=None, batch_size: int=None, epoch_callback=None, scale_data=False):
+    def train(self, episodes: Sequence[Tuple[np.ndarray]], epochs: int=None, batch_size: int=None, epoch_callback=None,
+              scale_data=False, shuffle_data=False):
 
         if not epochs:
             raise ValueError("Missing required kwarg: epochs")
@@ -75,6 +76,11 @@ class MDN_Model(BaseModel):
         losses = np.zeros(epochs)
 
         for t in range(epochs):
+
+            if shuffle_data:
+                idx = np.random.permutation(x_array.shape[0])
+                x_array = x_array[idx]
+                y_array = y_array[idx]
 
             for batch in range(n_batches):
 
