@@ -46,13 +46,14 @@ all_settings = []
 # all_settings.append(TrainSetting(2, 0, 100, "kl2-rl0-b100"))
 # all_settings.append(TrainSetting(2, 1, 100, "kl2-rl1-b100"))
 # all_settings.append(TrainSetting(2, 2, 100, "kl2-rl2-b100"))
-all_settings.append(TrainSetting(2, 1, 100, 16, "kl2-rl1-b100-z32-colordataaset"))
-all_settings.append(TrainSetting(2, 1, 150, 16, "kl2-rl1-b150-z32-colordataaset"))
-all_settings.append(TrainSetting(2, 1, 200, 16, "kl2-rl1-b200-z32-colordataaset"))
 
-all_settings.append(TrainSetting(2, 1, 100, 32, "kl2-rl1-b100-z32-colordataaset"))
-all_settings.append(TrainSetting(2, 1, 150, 32, "kl2-rl1-b150-z32-colordataaset"))
-all_settings.append(TrainSetting(2, 1, 200, 32, "kl2-rl1-b200-z32-colordataaset"))
+all_settings.append(TrainSetting(2, 1, 100, 16, "kl2rl1-b100-z16-colordataset"))
+all_settings.append(TrainSetting(2, 1, 150, 16, "kl2rl1-b150-z16-colordataset"))
+all_settings.append(TrainSetting(2, 1, 200, 16, "kl2rl1-b200-z16-colordataset"))
+
+all_settings.append(TrainSetting(2, 1, 100, 32, "kl2rl1-b100-z32-colordataset"))
+all_settings.append(TrainSetting(2, 1, 150, 32, "kl2rl1-b150-z32-colordataset"))
+all_settings.append(TrainSetting(2, 1, 200, 32, "kl2rl1-b200-z32-colordataset"))
 
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu systems
