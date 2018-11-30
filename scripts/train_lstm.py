@@ -9,27 +9,25 @@ from gym.envs.robotics import FetchPickAndPlaceSphereEnv, FetchReachEnv
 import numpy as np
 
 import _gpp
-from gpp.models import MDN_Model
 from gpp.models.lstm_model import LSTM_Model
 from gpp.models.utilities import get_observation_space, get_observations
 from gpp.mpc import MPC
 from gpp.dataset import EnvDataset
-from evaluate_mdn import evaluate as evaluate_mdn
 
 
 BATCH_SIZE = 32
 TRAINING_EPOCHS = 100
-N_EPISODES = 18
-EPISODE_LENGTH = 10
+N_EPISODES = 4000
+EPISODE_LENGTH = 100
 OVERWRITE_EXISTING = True
-VISUAL_TEST = False
+VISUAL_TEST = True
 
 # MDN_COMPONENTS = 6
 MPC_HORIZON = 5
-MPC_SEQUENCES = 26
+MPC_SEQUENCES = 50000
 
 #ENV_ID = 'FetchPushSphereDense-v1'
-#EXP_NAME = 'push_sphere_mdn_strategy'
+#EXP_NAME = 'push_sphere_lstm_strategy'
 
 ENV_ID = 'FetchReachDense-v1'
 EXP_NAME = 'reach_lstm'
@@ -69,7 +67,7 @@ def main():
     model = LSTM_Model(n_inputs, 50, n_outputs, np_random=np_random, device=device)
 
     model_path = Path(f'./out/{EXP_NAME}_model.pkl')
-    # model_path = Path(f'./out/{EXP_NAME}_model_e10.pkl')
+    model_path = Path(f'./out/{EXP_NAME}_model_e20.pkl')
     data_path = Path(f'./out/{EXP_NAME}_data.pkl')
 
     do_train = True
@@ -78,7 +76,7 @@ def main():
         if OVERWRITE_EXISTING:
             print('Overwriting...')
         else:
-            model = MDN_Model.load(model_path, device)
+            model = LSTM_Model.load(model_path, device)
             do_train = False
     else:
         print('Existing model not found.')
@@ -104,22 +102,9 @@ def main():
 
         def epoch_callback(epoch, loss):
             print(epoch, loss)
-            if epoch % 10 == 0:
+            if epoch % 1 == 0:
                 path = Path(f'./out/{EXP_NAME}_model_e{epoch}.pkl')
                 model.save(path)
-                evaluate_mdn(path, ENV_ID, strategy=STRATEGY)
-
-        if False:
-            eps_with_changes = 0
-            for e in episodes:
-                prev_pos = np.zeros(3)
-                changed = -1
-                for s in e[0]:
-                    sphere_pos = s[3:6].copy()
-                    changed += int(not np.allclose(sphere_pos, prev_pos, atol=0.001))
-                    prev_pos = sphere_pos
-                eps_with_changes += int(changed > 0)
-            print(eps_with_changes)
 
         print('Training...')
         losses = model.train(episodes, TRAINING_EPOCHS, batch_size=BATCH_SIZE, epoch_callback=epoch_callback,

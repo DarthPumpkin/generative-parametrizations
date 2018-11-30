@@ -39,7 +39,9 @@ class LSTM_Model(BaseModel):
 
     @device.setter
     def device(self, value):
-        self.lstm = self.lstm.to(value)
+        for k, l in self.__dict__.items():
+            if isinstance(l, nn.Module):
+                self.__dict__[k] = l.to(value)
         self._device = value
 
     @staticmethod
@@ -79,10 +81,9 @@ class LSTM_Model(BaseModel):
             self._action_scaler = StandardScaler()
             self._action_scaler.fit(x_actions)
 
-            for episode in episodes:
-                states, actions = episode
-                self._state_scaler.transform(states, copy=False)
-                self._action_scaler.transform(actions, copy=False)
+            for (ss, aa) in episodes:
+                self._state_scaler.transform(ss, copy=False)
+                self._action_scaler.transform(aa, copy=False)
 
         n_batches = int(math.ceil(len(episodes) / batch_size))
         losses = np.zeros(epochs)
@@ -96,20 +97,21 @@ class LSTM_Model(BaseModel):
                 actual_batch_size = len(x_batch)
                 input_batch = np.concatenate((x_batch, a_batch), axis=-1)
 
-                x_variable = torch.from_numpy(x_batch.astype(np.float32)).to(self.device)  # type: tensor.Tensor
-                y_variable = torch.from_numpy(y_batch.astype(np.float32)).to(self.device)  # type: tensor.Tensor
+                x_variable = torch.from_numpy(input_batch.astype(np.float32)).to(self.device)  # type: tensor.Tensor
+                y_variable = torch.Tensor(y_batch).to(self.device)  # type: tensor.Tensor
                 assert hasattr(y_variable, 'requires_grad')
                 y_variable.requires_grad = False
 
-                initial_hidden = self._init_lstm(batch_size)
+                initial_hidden = self._init_lstm(actual_batch_size)
                 output, hidden = self.lstm(x_variable, initial_hidden)
+                output = self.hidden2out(output)
                 loss = self.loss_function(output, y_variable)
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
                 losses[t] += loss.item()
 
-            losses[t] /= x_batch.shape[0]
+            losses[t] /= n_batches
 
             if callable(epoch_callback):
                 epoch_callback(t, losses[t])
@@ -142,10 +144,12 @@ class LSTM_Model(BaseModel):
             curr_states = torch.Tensor(initial_state).to(self.device)
             curr_states = curr_states.repeat((n_sequences, 1))
 
+            hidden = self._init_lstm(n_sequences)
+
             for t in range(horizon):
                 input_ = torch.cat([curr_states, action_sequences[:, t, :]], dim=1)
-                pi, mu, sig2 = self.mdn.forward(input_)
-                curr_states = sample_gmm_torch(pi, mu, sig2)
+                lstm_out, hidden = self.lstm(input_[:, None], hidden)
+                curr_states = self.hidden2out(lstm_out).squeeze()
                 outputs[:, t, :] = curr_states
 
         outputs = outputs.cpu().numpy()
@@ -159,35 +163,28 @@ class LSTM_Model(BaseModel):
 
     def __getstate__(self):
         odict = self.__dict__.copy()
-        del odict['mdn']
-        odict['_mdn_state_dict'] = self._get_state_dict()
+        del odict['lstm']
+        odict['_lstm_state_dict'] = self._get_state_dict()
         return odict
 
     def __setstate__(self, odict):
 
-        # for compatibility with older models
-        if 'device' in odict.keys():
-            del odict['device']
-        if '_action_scaler' not in odict.keys():
-            odict['_action_scaler'] = None
-            odict['_state_scaler'] = None
-
         self.__dict__.update(odict)
-        self.mdn = MDN(self.n_inputs, self.n_outputs, self.n_components)
-        self.mdn.load_state_dict(odict['_mdn_state_dict'])
+        self.lstm = nn.LSTM(self.n_inputs, self.n_hidden, num_layers=self.n_layers, batch_first=True)
+        self.lstm.load_state_dict(odict['_lstm_state_dict'])
         self.device = torch.device('cpu')
 
     def _get_state_dict(self):
-        state_dict = self.mdn.cpu().state_dict()
+        state_dict = self.lstm.cpu().state_dict()
         if self.device is not None and self.device.type != 'cpu':
-            self.mdn.cuda()
+            self.lstm.cuda()
         return state_dict
 
     def _check_input_sizes(self, action_size, state_size):
-        if action_size + state_size != self.mdn.n_inputs:
+        if action_size + state_size != self.n_inputs:
             raise ValueError(f"Actions and state have dimension {action_size} and {state_size} respectively "
-                             f"but MDN was initialized to {self.mdn.n_inputs} inputs")
+                             f"but LSTM was initialized to {self.n_inputs} inputs")
 
     def _init_lstm(self, batch_size):
-        return (torch.zeros(batch_size, self.n_layers, self.n_hidden),
-                torch.zeros(batch_size, self.n_layers, self.n_hidden))
+        return (torch.zeros(self.n_layers, batch_size, self.n_hidden, device=self.device),
+                torch.zeros(self.n_layers, batch_size, self.n_hidden, device=self.device))
