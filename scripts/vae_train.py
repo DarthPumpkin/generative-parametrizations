@@ -10,10 +10,11 @@ import matplotlib.pyplot as plt
 
 
 class TrainSetting:
-    def __init__(self, kl_opt, reconstruct_opt, b_in, name):
+    def __init__(self, kl_opt, reconstruct_opt, b_in, z_size, name):
         self.kl_opt = kl_opt,
         self.reconstruct_opt = reconstruct_opt
         self.b = b_in
+        self.z_size = z_size
         self.name = name
 
 
@@ -45,7 +46,13 @@ all_settings = []
 # all_settings.append(TrainSetting(2, 0, 100, "kl2-rl0-b100"))
 # all_settings.append(TrainSetting(2, 1, 100, "kl2-rl1-b100"))
 # all_settings.append(TrainSetting(2, 2, 100, "kl2-rl2-b100"))
-all_settings.append(TrainSetting(2, 1, 100, "kl2-rl1-b100-colordataaset"))
+all_settings.append(TrainSetting(2, 1, 100, 16, "kl2-rl1-b100-z32-colordataaset"))
+all_settings.append(TrainSetting(2, 1, 150, 16, "kl2-rl1-b150-z32-colordataaset"))
+all_settings.append(TrainSetting(2, 1, 200, 16, "kl2-rl1-b200-z32-colordataaset"))
+
+all_settings.append(TrainSetting(2, 1, 100, 32, "kl2-rl1-b100-z32-colordataaset"))
+all_settings.append(TrainSetting(2, 1, 150, 32, "kl2-rl1-b150-z32-colordataaset"))
+all_settings.append(TrainSetting(2, 1, 200, 32, "kl2-rl1-b200-z32-colordataaset"))
 
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu systems
@@ -54,12 +61,12 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu syst
 np.set_printoptions(precision=4, edgeitems=6, linewidth=100, suppress=True)
 
 # Hyperparameters for ConvVAE
-z_size = 16
+# z_size = 16
 batch_size = 32
 learning_rate = 0.001
 kl_tolerance = 0.5
 # Parameters for training
-NUM_EPOCH = 1000
+NUM_EPOCH = 200
 DATA_DIR = "record"
 IMG_OUTPUT_DIR = './out'
 
@@ -91,10 +98,10 @@ total_length = len(x_train)
 num_batches = int(np.floor(total_length / batch_size))
 for setting in all_settings:
     print("Start setting: {}".format(setting.name))
-    vae = ConvVAE(z_size=z_size, batch_size=batch_size, learning_rate=learning_rate, kl_tolerance=kl_tolerance,
+    vae = ConvVAE(z_size=setting.z_size, batch_size=batch_size, learning_rate=learning_rate, kl_tolerance=kl_tolerance,
                   is_training=True, reuse=False, gpu_mode=False, reconstruction_option=setting.reconstruct_opt,
                   kl_option=setting.kl_opt)
-    vae.load_json("tf_vae/kl2-rl1-b100-colordataasetvae-fetch200.json")
+    # vae.load_json("tf_vae/kl2-rl1-b100-colordataasetvae-fetch200.json")
     # train loop:
     train_step = train_loss = r_loss = kl_loss = None
 
