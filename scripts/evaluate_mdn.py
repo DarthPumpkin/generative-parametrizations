@@ -9,10 +9,22 @@ from gpp.models import MDN_Model
 from gpp.dataset import EnvDataset
 
 
-N_EPISODES = 1000
+N_EPISODES = 100
+EP_LENGTH = 20
 
 
-def evaluate(model_path: Path, env_id: str):
+def push_strategy(raw_env, obs):
+    if np.random.uniform() < 1 / 4:
+        gripper_pos = obs[:3]
+        object_pos = obs[3:6]
+        delta = object_pos - gripper_pos
+        action = np.r_[delta, 0.0] * 5.0
+        return action.clip(raw_env.action_space.low, raw_env.action_space.high)
+    else:
+        return raw_env.action_space.sample()
+
+
+def evaluate(model_path: Path, env_id: str, strategy=None):
 
     if torch.cuda.is_available():
         print("CUDA available, proceeding with GPU...")
@@ -32,20 +44,21 @@ def evaluate(model_path: Path, env_id: str):
 
     dataset = EnvDataset(env)
     print('Generating data...')
-    dataset.generate(N_EPISODES, 1)
+    dataset.generate(N_EPISODES, EP_LENGTH, strategy=strategy)
     episodes = dataset.data
 
     print('Evaluating model...')
-    ms_errors = np.zeros((len(episodes), 1))
+    ms_errors = np.zeros((len(episodes), EP_LENGTH))
     for i, ep in enumerate(episodes):
         states, actions = ep
-        actions = np.expand_dims(actions, axis=0)
-        init_state = states[0]
-        next_states = states[1:]
-        pred_states = model.forward_sim(actions, init_state)[0]
-        err = next_states - pred_states
-        mse = np.mean(err**2.0)
-        ms_errors[i] = mse
+        for j in range(len(states)-1):
+            a = actions[None, None, j]
+            init_state = states[j]
+            next_state = states[j+1]
+            pred_state = model.forward_sim(a, init_state)[0, 0]
+            err = next_state - pred_state
+            mse = np.mean(err**2.0)
+            ms_errors[i, j] = mse
 
     avg_mse = ms_errors.mean()
     print(f'Avg. MSE: {avg_mse}')
@@ -53,5 +66,6 @@ def evaluate(model_path: Path, env_id: str):
 
 
 if __name__ == '__main__':
-    evaluate(Path('./out/fetch_mdn_clamp_6comp_model.pkl'), 'FetchReachDense-v1')
+    #evaluate(Path('./out/fetch_mdn_clamp_6comp_model.pkl'), 'FetchReachDense-v1')
     evaluate(Path('./out/fetch_mdn_scaled_6comp_model.pkl'), 'FetchReachDense-v1')
+    evaluate(Path('./out/push_sphere_mdn_strategy_model_e0.pkl'), 'FetchPushSphereDense-v1', strategy=push_strategy)
