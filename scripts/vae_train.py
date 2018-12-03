@@ -17,43 +17,68 @@ class TrainSetting:
         self.z_size = z_size
         self.name = name
 
-
 all_settings = []
+"""TRAIN KNOWN BAD MODELS"""
+all_settings.append(TrainSetting(0, 0, 0, 32, "kl0rl0-z32-3decDataset"))
+all_settings.append(TrainSetting(0, 1, 0, 32, "kl0rl1-z32-3decDataset"))
+all_settings.append(TrainSetting(0, 2, 0, 32, "kl0rl2-z32-3decDataset"))
+
+all_settings.append(TrainSetting(1, 0, 100, 32, "kl1rl0-z32-b100-3decDataset"))
+all_settings.append(TrainSetting(1, 1, 100, 32, "kl1rl1-z32-b100-3decDataset"))
+all_settings.append(TrainSetting(1, 2, 100, 32, "kl1rl2-z32-b100-3decDataset"))
+
+all_settings.append(TrainSetting(2, 0, 100, 32, "kl2rl0-z32-b100-3decDataset"))
+all_settings.append(TrainSetting(2, 1, 100, 32, "kl2rl1-z32-b100-3decDataset"))
+all_settings.append(TrainSetting(2, 2, 100, 32, "kl2rl2-z32-b100-3decDataset"))
+"""TRAIN GOOD MODELS"""
+all_settings.append(TrainSetting(2, 1, 10,  32, "kl2rl1-z32-10-3decDataset"))
+all_settings.append(TrainSetting(2, 1, 50,  32, "kl2rl1-z32-50-3decDataset"))
+all_settings.append(TrainSetting(2, 1, 100, 32, "kl2rl1-z32-100-3decDataset"))
+all_settings.append(TrainSetting(2, 1, 150, 32, "kl2rl1-z32-150-3decDataset"))
+all_settings.append(TrainSetting(2, 1, 200, 32, "kl2rl1-z32-200-3decDataset"))
+all_settings.append(TrainSetting(2, 1, 250, 32, "kl2rl1-z32-250-3decDataset"))
+all_settings.append(TrainSetting(2, 1, 300, 32, "kl2rl1-z32-300-3decDataset"))
+all_settings.append(TrainSetting(2, 1, 400, 32, "kl2rl1-z32-400-3decDataset"))
+all_settings.append(TrainSetting(2, 1, 500, 32, "kl2rl1-z32-500-3decDataset"))
+"""TRAIN SUPER MODELS"""
+all_settings.append(TrainSetting(2, 1, 150, 16, "kl2rl1-z16-150-3decDataset"))
+all_settings.append(TrainSetting(2, 1, 200, 16, "kl2rl1-z16-200-3decDataset"))
+all_settings.append(TrainSetting(2, 1, 250, 16, "kl2rl1-z16-250-3decDataset"))
 # all_settings.append(TrainSetting(0, 0, 0, "kl0-rl0-b0"))
 # all_settings.append(TrainSetting(0, 1, 0, "kl0-rl1-b0"))
 # all_settings.append(TrainSetting(0, 2, 0, "kl0-rl2-b0"))
 #
 # all_settings.append(TrainSetting(1, 0, 10, "kl1-rl0-b10"))
 # all_settings.append(TrainSetting(1, 1, 10, "kl1-rl1-b10"))
-# #all_settings.append(TrainSetting(1, 2, 10, "kl1-rl2-b10"))
+# all_settings.append(TrainSetting(1, 2, 10, "kl1-rl2-b10"))
 #
 # all_settings.append(TrainSetting(1, 0, 50, "kl1-rl0-b50"))
 # all_settings.append(TrainSetting(1, 1, 50, "kl1-rl1-b50"))
-# #all_settings.append(TrainSetting(1, 2, 50, "kl1-rl2-b50"))
+# all_settings.append(TrainSetting(1, 2, 50, "kl1-rl2-b50"))
 #
 # all_settings.append(TrainSetting(1, 0, 100, "kl1-rl0-b100"))
 # all_settings.append(TrainSetting(1, 1, 100, "kl1-rl1-b100"))
-# #all_settings.append(TrainSetting(1, 2, 100, "kl1-rl2-b100"))
+# all_settings.append(TrainSetting(1, 2, 100, "kl1-rl2-b100"))
 #
 # all_settings.append(TrainSetting(2, 0, 10, "kl2-rl0-b10"))
 # all_settings.append(TrainSetting(2, 1, 10, "kl2-rl1-b10"))
-# #all_settings.append(TrainSetting(2, 2, 10, "kl2-rl2-b10"))
+# all_settings.append(TrainSetting(2, 2, 10, "kl2-rl2-b10"))
 #
 # all_settings.append(TrainSetting(2, 0, 50, "kl2-rl0-b50"))
 # all_settings.append(TrainSetting(2, 1, 50, "kl2-rl1-b50"))
-# #all_settings.append(TrainSetting(2, 2, 50, "kl2-rl2-b50"))
+# all_settings.append(TrainSetting(2, 2, 50, "kl2-rl2-b50"))
 #
 # all_settings.append(TrainSetting(2, 0, 100, "kl2-rl0-b100"))
 # all_settings.append(TrainSetting(2, 1, 100, "kl2-rl1-b100"))
 # all_settings.append(TrainSetting(2, 2, 100, "kl2-rl2-b100"))
 
-all_settings.append(TrainSetting(2, 1, 100, 16, "kl2rl1-b100-z16-colordataset"))
-all_settings.append(TrainSetting(2, 1, 150, 16, "kl2rl1-b150-z16-colordataset"))
-all_settings.append(TrainSetting(2, 1, 200, 16, "kl2rl1-b200-z16-colordataset"))
-
-all_settings.append(TrainSetting(2, 1, 100, 32, "kl2rl1-b100-z32-colordataset"))
-all_settings.append(TrainSetting(2, 1, 150, 32, "kl2rl1-b150-z32-colordataset"))
-all_settings.append(TrainSetting(2, 1, 200, 32, "kl2rl1-b200-z32-colordataset"))
+# all_settings.append(TrainSetting(2, 1, 100, 16, "kl2rl1-b100-z16-colordataset"))
+# all_settings.append(TrainSetting(2, 1, 150, 16, "kl2rl1-b150-z16-colordataset"))
+# all_settings.append(TrainSetting(2, 1, 200, 16, "kl2rl1-b200-z16-colordataset"))
+#
+# all_settings.append(TrainSetting(2, 1, 100, 32, "kl2rl1-b100-z32-colordataset"))
+# all_settings.append(TrainSetting(2, 1, 150, 32, "kl2rl1-b150-z32-colordataset"))
+# all_settings.append(TrainSetting(2, 1, 200, 32, "kl2rl1-b200-z32-colordataset"))
 
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu systems
@@ -131,19 +156,19 @@ for setting in all_settings:
             #     r_loss_list.append(r_loss)
             #     kl_loss_list.append(kl_loss)
             #
-            # train_loss_list.append(train_loss_list[-1]*smoothing+train_loss*(1-smoothing))
-            # r_loss_list.append(r_loss_list[-1] * smoothing + r_loss * (1-smoothing))
-            # kl_loss_list.append(kl_loss_list[-1] * smoothing + kl_loss*(1-smoothing))
-            # if epoch > 0:
-            #     loss_grads_list.append(loss_grads_list[-1]*smoothing +
-            #                            (train_loss_list[-1] - train_loss_list[-2])*(1 - smoothing))
-            # else:
-            #     loss_grads_list.append(0)
+            train_loss_list.append(train_loss_list[-1]*smoothing+train_loss*(1-smoothing))
+            r_loss_list.append(r_loss_list[-1] * smoothing + r_loss * (1-smoothing))
+            kl_loss_list.append(kl_loss_list[-1] * smoothing + kl_loss*(1-smoothing))
+            if epoch > 0:
+                loss_grads_list.append(loss_grads_list[-1]*smoothing +
+                                       (train_loss_list[-1] - train_loss_list[-2])*(1 - smoothing))
+            else:
+                loss_grads_list.append(0)
 
-        # epoch_train_loss = np.mean(train_loss_list[-num_batches:])
-        # epoch_r_loss = np.mean(r_loss_list[-num_batches:])
-        # epoch_kl_loss = np.mean(kl_loss_list[-num_batches:])
-        # epoch_gradient_loss = np.mean(loss_grads_list[-num_batches:])
+        epoch_train_loss = np.mean(train_loss_list[-num_batches:])
+        epoch_r_loss = np.mean(r_loss_list[-num_batches:])
+        epoch_kl_loss = np.mean(kl_loss_list[-num_batches:])
+        epoch_gradient_loss = np.mean(loss_grads_list[-num_batches:])
 
         # epoch == -1 and print(" Epoch: ", epoch,
         #                     " step: ", (train_step + 1),
@@ -168,7 +193,7 @@ for setting in all_settings:
             batch_z = vae.encode(x_test[:batch_size])
             reconstruct = vae.decode(batch_z)
             reconstruct = (reconstruct * 255).astype(np.uint8)
-            im2print = 10
+            im2print = 30
 
             #print(batch_z)
 
