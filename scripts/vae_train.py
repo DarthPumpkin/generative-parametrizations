@@ -7,43 +7,49 @@ import _gpp
 
 from gpp.world_models_vae import ConvVAE
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.rcParams['mathtext.fontset'] = 'stix'
+matplotlib.rcParams['font.family'] = 'STIXGeneral'
+# plt.rcParams['savefig.dpi'] = 500
+plt.style.use('ggplot')
+plt.rcParams["errorbar.capsize"] = 2
 
 
 class TrainSetting:
-    def __init__(self, kl_opt, reconstruct_opt, b_in, z_size, name):
+    def __init__(self, kl_opt, reconstruct_opt, b_in, z_size, dataset_name="3decDataset"):
         self.kl_opt = kl_opt,
         self.reconstruct_opt = reconstruct_opt
         self.b = b_in
         self.z_size = z_size
-        self.name = name
+        self.name = "kl{}rl{}-z{}-b{}-{}".format(kl_opt, reconstruct_opt, z_size, b_in, dataset_name)
 
 all_settings = []
 """TRAIN KNOWN BAD MODELS"""
-all_settings.append(TrainSetting(0, 0, 0, 32, "kl0rl0-z32-3decDataset"))
-all_settings.append(TrainSetting(0, 1, 0, 32, "kl0rl1-z32-3decDataset"))
-all_settings.append(TrainSetting(0, 2, 0, 32, "kl0rl2-z32-3decDataset"))
+all_settings.append(TrainSetting(0, 0, 0, 32))
+all_settings.append(TrainSetting(0, 1, 0, 32))
+all_settings.append(TrainSetting(0, 2, 0, 32))
 
-all_settings.append(TrainSetting(1, 0, 100, 32, "kl1rl0-z32-b100-3decDataset"))
-all_settings.append(TrainSetting(1, 1, 100, 32, "kl1rl1-z32-b100-3decDataset"))
-all_settings.append(TrainSetting(1, 2, 100, 32, "kl1rl2-z32-b100-3decDataset"))
+all_settings.append(TrainSetting(1, 0, 100, 32))
+all_settings.append(TrainSetting(1, 1, 100, 32))
+all_settings.append(TrainSetting(1, 2, 100, 32))
 
-all_settings.append(TrainSetting(2, 0, 100, 32, "kl2rl0-z32-b100-3decDataset"))
-all_settings.append(TrainSetting(2, 1, 100, 32, "kl2rl1-z32-b100-3decDataset"))
-all_settings.append(TrainSetting(2, 2, 100, 32, "kl2rl2-z32-b100-3decDataset"))
+all_settings.append(TrainSetting(2, 0, 100, 32))
+all_settings.append(TrainSetting(2, 1, 100, 32))
+all_settings.append(TrainSetting(2, 2, 100, 32))
 """TRAIN GOOD MODELS"""
-all_settings.append(TrainSetting(2, 1, 10,  32, "kl2rl1-z32-10-3decDataset"))
-all_settings.append(TrainSetting(2, 1, 50,  32, "kl2rl1-z32-50-3decDataset"))
-all_settings.append(TrainSetting(2, 1, 100, 32, "kl2rl1-z32-100-3decDataset"))
-all_settings.append(TrainSetting(2, 1, 150, 32, "kl2rl1-z32-150-3decDataset"))
-all_settings.append(TrainSetting(2, 1, 200, 32, "kl2rl1-z32-200-3decDataset"))
-all_settings.append(TrainSetting(2, 1, 250, 32, "kl2rl1-z32-250-3decDataset"))
-all_settings.append(TrainSetting(2, 1, 300, 32, "kl2rl1-z32-300-3decDataset"))
-all_settings.append(TrainSetting(2, 1, 400, 32, "kl2rl1-z32-400-3decDataset"))
-all_settings.append(TrainSetting(2, 1, 500, 32, "kl2rl1-z32-500-3decDataset"))
+all_settings.append(TrainSetting(2, 1, 10,  32))
+all_settings.append(TrainSetting(2, 1, 50,  32))
+all_settings.append(TrainSetting(2, 1, 100, 32))
+all_settings.append(TrainSetting(2, 1, 150, 32))
+all_settings.append(TrainSetting(2, 1, 200, 32))
+all_settings.append(TrainSetting(2, 1, 250, 32))
+all_settings.append(TrainSetting(2, 1, 300, 32))
+all_settings.append(TrainSetting(2, 1, 400, 32))
+all_settings.append(TrainSetting(2, 1, 500, 32))
 """TRAIN SUPER MODELS"""
-all_settings.append(TrainSetting(2, 1, 150, 16, "kl2rl1-z16-150-3decDataset"))
-all_settings.append(TrainSetting(2, 1, 200, 16, "kl2rl1-z16-200-3decDataset"))
-all_settings.append(TrainSetting(2, 1, 250, 16, "kl2rl1-z16-250-3decDataset"))
+all_settings.append(TrainSetting(2, 1, 150, 16))
+all_settings.append(TrainSetting(2, 1, 200, 16))
+all_settings.append(TrainSetting(2, 1, 250, 16))
 # all_settings.append(TrainSetting(0, 0, 0, "kl0-rl0-b0"))
 # all_settings.append(TrainSetting(0, 1, 0, "kl0-rl1-b0"))
 # all_settings.append(TrainSetting(0, 2, 0, "kl0-rl2-b0"))
@@ -92,7 +98,7 @@ batch_size = 32
 learning_rate = 0.001
 kl_tolerance = 0.5
 # Parameters for training
-NUM_EPOCH = 200
+NUM_EPOCH = 3
 DATA_DIR = "record"
 IMG_OUTPUT_DIR = './out'
 
@@ -151,11 +157,11 @@ for setting in all_settings:
             feed = {vae.x: batch.astype(np.float), vae.beta: disentanglement, vae.capacity: c}
             (train_loss, r_loss, kl_loss, train_step, _) = vae.sess.run([vae.loss, vae.r_loss, vae.kl_loss, vae.global_step,
                                                                          vae.train_op], feed)
-            # if epoch == idx == 0:
-            #     train_loss_list.append(train_loss)
-            #     r_loss_list.append(r_loss)
-            #     kl_loss_list.append(kl_loss)
-            #
+            if epoch == idx == 0:
+                train_loss_list.append(train_loss)
+                r_loss_list.append(r_loss)
+                kl_loss_list.append(kl_loss)
+
             train_loss_list.append(train_loss_list[-1]*smoothing+train_loss*(1-smoothing))
             r_loss_list.append(r_loss_list[-1] * smoothing + r_loss * (1-smoothing))
             kl_loss_list.append(kl_loss_list[-1] * smoothing + kl_loss*(1-smoothing))
@@ -180,39 +186,22 @@ for setting in all_settings:
         # finished, final model:
         if epoch == NUM_EPOCH-1:  # or epoch % 50 == 0:
             vae.save_json("tf_vae/{}vae-fetch{}.json".format(setting.name, epoch))
-            # plt.plot(train_loss_list, label="total loss")
-            # plt.plot(r_loss_list, label="rec loss")
-            # plt.plot(kl_loss_list, label="kl loss")
-            # plt.legend()
-            # plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_history.pdf', format="pdf")
-            # plt.close("all")
-            # plt.grid(True)
-            # plt.plot(loss_grads_list)
-            # plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_gradient.pdf', format="pdf")
+            plt.plot(train_loss_list, label="total loss")
+            plt.plot(r_loss_list, label="rec loss")
+            plt.plot(kl_loss_list, label="kl loss")
+            plt.legend()
+            plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_history.pdf', format="pdf")
+            plt.close("all")
+            plt.plot(loss_grads_list)
+            plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_gradient.pdf', format="pdf")
 
             batch_z = vae.encode(x_test[:batch_size])
             reconstruct = vae.decode(batch_z)
             reconstruct = (reconstruct * 255).astype(np.uint8)
-            im2print = 30
+            im2print = 20
 
-            #print(batch_z)
-
-            # if epoch > 200 and epoch % 50 == 0:
-            #     orig = batch_z
-            #     values = np.linspace(-4, 4, 50)
-            #     p_count = 1
-            #     for i in range(batch_z.shape[1]):
-            #         batch_z = orig.copy()
-            #         for j, n in enumerate(values):
-            #             batch_z[0][i] = n
-            #             reconstruct = (vae.decode(batch_z) * 255).astype(np.uint8)
-            #             plt.subplot(16, 50, p_count)
-            #             plt.imshow(reconstruct[0])
-            #             plt.axis("off")
-            #             p_count += 1
-            #     plt.show()
-
-            plt.figure(figsize=(30 * 2, 30 * im2print))
+            plt.figure(figsize=(5 * 2, 5 * im2print))
+            plt.suptitle(setting.name)
             for i in range(im2print):
                 plt.subplot(im2print, 2, 1+2*i)
                 original = x_test[i].clip(0, 1)
