@@ -153,7 +153,7 @@ for setting in all_settings:
         #                     " derivative: ", loss_grads_list[-1],
         #                     " last beta: ", disentanglement)
         # finished, final model:
-        if epoch % 50 == 0 or epoch == NUM_EPOCH-1:
+        if epoch == NUM_EPOCH-1:  # or epoch % 50 == 0:
             vae.save_json("tf_vae/{}vae-fetch{}.json".format(setting.name, epoch))
             # plt.plot(train_loss_list, label="total loss")
             # plt.plot(r_loss_list, label="rec loss")
@@ -187,6 +187,7 @@ for setting in all_settings:
             #             p_count += 1
             #     plt.show()
 
+            plt.figure(figsize=(30 * 2, 30 * im2print))
             for i in range(im2print):
                 plt.subplot(im2print, 2, 1+2*i)
                 original = x_test[i].clip(0, 1)
