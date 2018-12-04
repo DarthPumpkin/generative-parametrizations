@@ -16,7 +16,7 @@ plt.rcParams["errorbar.capsize"] = 2
 
 
 class TrainSetting:
-    def __init__(self, kl_opt, reconstruct_opt, b_in, z_size, dataset_name="3decDataset"):
+    def __init__(self, kl_opt, reconstruct_opt, b_in, z_size, dataset_name="push_sphere_v0"):
         self.kl_opt = kl_opt,
         self.reconstruct_opt = reconstruct_opt
         self.b = b_in
@@ -50,6 +50,11 @@ all_settings.append(TrainSetting(2, 1, 500, 32))
 all_settings.append(TrainSetting(2, 1, 150, 16))
 all_settings.append(TrainSetting(2, 1, 200, 16))
 all_settings.append(TrainSetting(2, 1, 250, 16))
+all_settings.append(TrainSetting(2, 1, 300, 16))
+all_settings.append(TrainSetting(2, 1, 400, 16))
+
+all_settings = all_settings[::-1]
+
 # all_settings.append(TrainSetting(0, 0, 0, "kl0-rl0-b0"))
 # all_settings.append(TrainSetting(0, 1, 0, "kl0-rl1-b0"))
 # all_settings.append(TrainSetting(0, 2, 0, "kl0-rl2-b0"))
@@ -113,7 +118,7 @@ if pendulum_data:
     dataset = np.load(os.path.join(data_path, 'pendulum_imgs.npy'))
     dataset = dataset[:, 60:190, 60:190]
 else:  # fetch_sphere env
-    dataset = np.load(os.path.join(data_path, 'fetch_sphere_big_longer_color_imgs.npz'))
+    dataset = np.load(os.path.join(data_path, 'push_sphere_v0_imgs.npz'))
     dataset = dataset['arr_0']
 
 np.random.shuffle(dataset)
@@ -129,6 +134,12 @@ x_test = dataset[train_ratio:]
 total_length = len(x_train)
 num_batches = int(np.floor(total_length / batch_size))
 for setting in all_settings:
+
+    final_model_path = "tf_vae/{}vae-fetch{}.json".format(setting.name, NUM_EPOCH-1)
+    if os.path.exists(final_model_path):
+        print("Model for setting {} exists. Skipping...".format(setting.name))
+        continue
+
     print("Start setting: {}".format(setting.name))
     vae = ConvVAE(z_size=setting.z_size, batch_size=batch_size, learning_rate=learning_rate, kl_tolerance=kl_tolerance,
                   is_training=True, reuse=False, gpu_mode=False, reconstruction_option=setting.reconstruct_opt,
