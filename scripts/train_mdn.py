@@ -12,7 +12,7 @@ import _gpp
 from gpp.models import MDN_Model
 from gpp.models.utilities import get_observation_space, get_observations
 from gpp.mpc import MPC
-from gpp.dataset import EnvDataset
+from gpp.dataset_old import EnvDataset
 from evaluate_mdn import evaluate as evaluate_mdn
 
 

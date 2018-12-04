@@ -6,7 +6,7 @@ import numpy as np
 
 import _gpp
 from gpp.models import MDN_Model
-from gpp.dataset import EnvDataset
+from gpp.dataset_old import EnvDataset
 
 
 N_EPISODES = 100

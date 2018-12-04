@@ -5,14 +5,14 @@ from datetime import datetime
 import imageio
 import torch
 import gym
-from gym.envs.robotics import FetchPickAndPlaceSphereEnv, FetchReachEnv
+# from gym.envs.robotics import FetchPickAndPlaceSphereEnv, FetchReachEnv
 import numpy as np
 
 import _gpp
 from gpp.models.lstm_model import LSTM_Model
 from gpp.models.utilities import get_observation_space, get_observations
 from gpp.mpc import MPC
-from gpp.dataset import EnvDataset
+from gpp.dataset_old import EnvDataset
 
 
 BATCH_SIZE = 32
@@ -67,7 +67,7 @@ def main():
     model = LSTM_Model(n_inputs, 50, n_outputs, np_random=np_random, device=device)
 
     model_path = Path(f'./out/{EXP_NAME}_model.pkl')
-    model_path = Path(f'./out/{EXP_NAME}_model_e20.pkl')
+    # model_path = Path(f'./out/{EXP_NAME}_model_e20.pkl')
     data_path = Path(f'./out/{EXP_NAME}_data.pkl')
 
     do_train = True

@@ -5,12 +5,12 @@ from typing import Sequence, Tuple
 
 import numpy as np
 import torch
-from torch import nn, tensor
 from sklearn.preprocessing import StandardScaler
+from torch import nn, tensor
 
+from gpp.lstm_dataset import LSTM_Dataset
 from gpp.models.utilities import merge_episodes
 from . import BaseModel
-from ..mdn import MDN, sample_gmm_torch, mdn_loss
 
 
 class LSTM_Model(BaseModel):
@@ -32,6 +32,7 @@ class LSTM_Model(BaseModel):
         self.device = device
         self._state_scaler = None
         self._action_scaler = None
+        self._target_scaler = None
 
     @property
     def device(self):
@@ -58,8 +59,8 @@ class LSTM_Model(BaseModel):
         with open(file_path, 'wb') as f:
             pickle.dump(self, f)
 
-    def train(self, episodes: Sequence[Tuple[np.ndarray]], epochs: int=None, batch_size: int=None, epoch_callback=None,
-              scale_data=False):
+    def train(self, episodes: Sequence[Tuple[np.ndarray]], targets=None, window_size=5, epochs: int = None,
+              batch_size: int = None, epoch_callback=None, scale_data=False, scale_targets=False):
 
         if not epochs:
             raise ValueError("Missing required kwarg: epochs")
@@ -85,16 +86,28 @@ class LSTM_Model(BaseModel):
                 self._state_scaler.transform(ss, copy=False)
                 self._action_scaler.transform(aa, copy=False)
 
-        n_batches = int(math.ceil(len(episodes) / batch_size))
+        if scale_targets:
+            if targets:
+                self._target_scaler = StandardScaler()
+                self._target_scaler.fit(targets)
+                self._target_scaler.transform(targets, copy=False)
+            else:
+                self._target_scaler = self._state_scaler
+
+        dataset = LSTM_Dataset(episodes, window_size, observations=targets)
+        n_batches = math.ceil(len(dataset) / batch_size)
+        dataset_order = np.random.permutation(len(dataset))
+
         losses = np.zeros(epochs)
 
         for t in range(epochs):
 
             for batch in range(n_batches):
-                batch_data = episodes[batch * batch_size:(batch + 1) * batch_size]
-                x_batch, y_batch, a_batch = zip(*[(states[:-1], states[1:], actions) for (states, actions) in
-                                                  batch_data])
-                actual_batch_size = len(x_batch)
+                batch_ix = dataset_order[batch * batch_size:(batch + 1) * batch_size]
+                actual_batch_size = len(batch_ix)
+                batch_data = [dataset[i] for i in batch_ix]
+                x_batch, a_batch, y_batch = [np.concatenate(data, axis=0) for data in zip(*batch_data)]
+                # x_batch.shape == batch_size x window_size x state_size
                 input_batch = np.concatenate((x_batch, a_batch), axis=-1)
 
                 x_variable = torch.from_numpy(input_batch.astype(np.float32)).to(self.device)  # type: tensor.Tensor
@@ -102,8 +115,10 @@ class LSTM_Model(BaseModel):
                 assert hasattr(y_variable, 'requires_grad')
                 y_variable.requires_grad = False
 
-                initial_hidden = self._init_lstm(actual_batch_size)
-                output, hidden = self.lstm(x_variable, initial_hidden)
+                hidden = self._init_lstm(actual_batch_size)
+                output = None
+                for w in range(window_size):
+                    output, hidden = self.lstm(x_variable, hidden)
                 output = self.hidden2out(output)
                 loss = self.loss_function(output, y_variable)
                 optimizer.zero_grad()
@@ -154,10 +169,10 @@ class LSTM_Model(BaseModel):
 
         outputs = outputs.cpu().numpy()
 
-        if self._state_scaler is not None:
+        if self._target_scaler is not None:
             # scale back output states
             reshaped = outputs.reshape(n_sequences * horizon, -1)
-            self._state_scaler.inverse_transform(reshaped, copy=False)
+            self._target_scaler.inverse_transform(reshaped, copy=False)
 
         return outputs
 
