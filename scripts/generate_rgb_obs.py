@@ -265,7 +265,10 @@ def crop(config_name: str, size):
 
 
 def find_corrupted_idx(data):
-    magic_threshold = 8000 * np.prod(data.shape[1:]) / (64 * 64 * 3)
+    threshold = 8000
+    if data.max() > 1:
+        threshold *= 255
+    magic_threshold = threshold * np.prod(data.shape[1:]) / (64 * 64 * 3)
     sums = np.sum(data, axis=(1, 2, 3))
     corrupted_idx = np.where(sums < magic_threshold)[0]
     return corrupted_idx
@@ -294,7 +297,7 @@ def check_images(config_name: str, show_imgs=False):
 if __name__ == '__main__':
 
     generate('push_sphere_v0')
-    check_images('push_sphere_v0', show_imgs=True)
+    check_images('push_sphere_v0', show_imgs=False)
 
     exit(0)
 

@@ -10,7 +10,7 @@ import numpy as np
 import _gpp
 from gpp.models import MDN_Model
 from gpp.mpc import MPC
-from gpp.dataset import EnvDataset
+from gpp.dataset_old import EnvDataset
 
 BATCH_SIZE = 16
 TRAINING_EPOCHS = 50
