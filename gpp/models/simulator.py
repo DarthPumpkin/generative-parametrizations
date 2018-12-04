@@ -1,9 +1,19 @@
+import copy
+
+from joblib import Parallel, delayed
 import gym
 import numpy as np
 from gym.envs.classic_control import PendulumEnv, CartPoleEnv
 
+try:
+    from gym.envs.robotics import FetchEnv
+except (ImportError, gym.error.DependencyNotInstalled) as e:
+    FetchEnv = None
+    print('WARNING: Could not import robotics environments! MuJoCo might not be installed.')
+
+
 from . import BaseModel
-from .utilities import get_observation_space
+from .utilities import get_observations
 
 
 class PendulumSim(BaseModel):
@@ -135,3 +145,78 @@ class CartPoleSim(BaseModel):
             all_states[:, t+1] = last_internal_states.copy()
 
         return all_states[:, 1:]
+
+
+class RoboticsSim(BaseModel):
+
+    def __init__(self, env: gym.Env, workers: int=1, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if FetchEnv is None:
+            raise ImportError
+
+        raw_env = env.unwrapped  # type: FetchEnv
+        if not isinstance(raw_env, FetchEnv):
+            raise ValueError('PendulumSim only works with PendulumEnv or subclasses!')
+
+        self._main_env = env
+        self._workers = workers
+        self._cloned_envs = [copy.deepcopy(env) for _ in range(self._workers)]
+
+    @classmethod
+    def _forward_sim_worker(cls, env: gym.Env, initial_sim_state: object,
+                            action_sequences: np.ndarray, initial_state: np.ndarray):
+
+        n_sequences, horizon, _ = action_sequences.shape
+        all_states = np.zeros((n_sequences, horizon + 1) + initial_state.shape)
+        raw_env = env.unwrapped  # type: FetchEnv
+        initial_sim_state = copy.deepcopy(initial_sim_state)
+
+        # get initial state
+        all_states[:, 0] = np.tile(initial_state, (n_sequences, 1))
+
+        for s in range(n_sequences):
+            env.reset()
+            raw_env.sim.set_state(initial_sim_state)
+            raw_env.sim.forward()
+            for t in range(horizon):
+                a = action_sequences[s, t]
+                env.step(a)
+                obs = get_observations(env)
+                all_states[:, t + 1] = obs.copy()
+
+        return all_states[:, 1:]
+
+    def _parallel_forward_sim(self, initial_sim_state: object, action_sequences: np.ndarray, initial_state: np.ndarray):
+
+        n_sequences, horizon, _ = action_sequences.shape
+
+        workers = min(self._workers, n_sequences)
+        parallel = Parallel(n_jobs=workers, backend='multiprocessing', verbose=5)
+        sequences_idx = np.array_split(np.arange(n_sequences), workers)
+
+        results = parallel(delayed(RoboticsSim._forward_sim_worker)(
+            self._cloned_envs[i],
+            initial_sim_state,
+            action_sequences[sequences_idx[i]],
+            initial_state.copy()
+        ) for i in range(workers))
+
+        all_states = np.concatenate(results)
+        return all_states
+
+
+    def _fast_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray):
+        pass
+
+
+    def forward_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray):
+
+        main_raw_env = self._main_env.unwrapped  # type: FetchEnv
+        initial_sim_state = main_raw_env.sim.get_state()
+
+        if self._workers > 1:
+            return self._parallel_forward_sim(initial_sim_state, action_sequences, initial_state)
+        else:
+            env = self._cloned_envs[0]
+            return self._forward_sim_worker(env, initial_sim_state, action_sequences, initial_state)
