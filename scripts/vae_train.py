@@ -52,6 +52,8 @@ all_settings.append(TrainSetting(2, 1, 200, 16))
 all_settings.append(TrainSetting(2, 1, 250, 16))
 all_settings.append(TrainSetting(2, 1, 300, 16))
 all_settings.append(TrainSetting(2, 1, 400, 16))
+all_settings.append(TrainSetting(2, 1, 500, 16))
+all_settings.append(TrainSetting(2, 1, 600, 16))
 
 all_settings = all_settings[::-1]
 
