@@ -36,6 +36,7 @@ all_settings.append(TrainSetting(1, 2, 100, 32))
 all_settings.append(TrainSetting(2, 0, 100, 32))
 all_settings.append(TrainSetting(2, 1, 100, 32))
 all_settings.append(TrainSetting(2, 2, 100, 32))
+
 """TRAIN GOOD MODELS"""
 all_settings.append(TrainSetting(2, 1, 10,  32))
 all_settings.append(TrainSetting(2, 1, 50,  32))
@@ -46,6 +47,8 @@ all_settings.append(TrainSetting(2, 1, 250, 32))
 all_settings.append(TrainSetting(2, 1, 300, 32))
 all_settings.append(TrainSetting(2, 1, 400, 32))
 all_settings.append(TrainSetting(2, 1, 500, 32))
+all_settings.append(TrainSetting(2, 1, 600, 32))
+
 """TRAIN SUPER MODELS"""
 all_settings.append(TrainSetting(2, 1, 150, 16))
 all_settings.append(TrainSetting(2, 1, 200, 16))
