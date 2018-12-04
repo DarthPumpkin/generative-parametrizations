@@ -52,8 +52,8 @@ all_settings.append(TrainSetting(2, 1, 200, 16))
 all_settings.append(TrainSetting(2, 1, 250, 16))
 all_settings.append(TrainSetting(2, 1, 300, 16))
 all_settings.append(TrainSetting(2, 1, 400, 16))
-all_settings.append(TrainSetting(2, 1, 500, 16))
-all_settings.append(TrainSetting(2, 1, 600, 16))
+# all_settings.append(TrainSetting(2, 1, 500, 16))
+# all_settings.append(TrainSetting(2, 1, 600, 16))
 
 all_settings = all_settings[::-1]
 
@@ -105,7 +105,7 @@ batch_size = 32
 learning_rate = 0.001
 kl_tolerance = 0.5
 # Parameters for training
-NUM_EPOCH = 200
+NUM_EPOCH = 30
 DATA_DIR = "record"
 IMG_OUTPUT_DIR = './out'
 
