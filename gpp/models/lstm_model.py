@@ -18,13 +18,22 @@ class _LstmNetwork(nn.Module):
         super(_LstmNetwork, self).__init__()
         self.n_inputs, self.n_hidden, self.n_outputs, self.n_layers = n_inputs, n_hidden, n_outputs, n_layers
         self.lstm = nn.LSTM(n_inputs, n_hidden, num_layers=n_layers, batch_first=True)
-        self.hidden2out = nn.Linear(n_hidden, n_outputs)
+
+        dense_h_units = 32
+
+        self.dense_h = nn.Sequential(
+            nn.Linear(n_hidden, dense_h_units),
+            nn.ReLU()
+        )
+
+        self.hidden2out = nn.Linear(dense_h_units, n_outputs)
 
     def forward(self, x: torch.Tensor, batch_size: int=None, hidden: (torch.Tensor, torch.Tensor)=None) -> (torch.Tensor, torch.Tensor):
         if hidden is None:
             assert batch_size is not None, 'Batch size must be specified if hidden is not provided'
             hidden = self.init_hidden(batch_size, x.device)
         output, hidden = self.lstm(x, hidden)
+        output = self.dense_h(output)
         output = self.hidden2out(output)
         return output, hidden
 
@@ -92,8 +101,8 @@ class LSTM_Model(BaseModel):
 
         state_size, action_size = episodes[0][0].shape[1], episodes[0][1].shape[1]
         self._check_input_sizes(action_size, state_size)
-        optimizer = torch.optim.RMSprop(self.network.parameters())
-        # optimizer = torch.optim.Adam(self.network.parameters(), lr=0.01)
+        # optimizer = torch.optim.RMSprop(self.network.parameters())
+        optimizer = torch.optim.Adam(self.network.parameters(), lr=0.001)
 
         dataset = LSTM_Dataset(episodes, window_size, observations=targets)
         n_batches = math.ceil(len(dataset) / batch_size)
