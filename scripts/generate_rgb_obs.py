@@ -343,7 +343,11 @@ def images_to_z(config_name: str, vae_model_descr: str, vae_model: Path, **vae_k
 if __name__ == '__main__':
 
     generate('pendulum_v0')
-    check_images('pendulum_v0', show_imgs=True)
+    check_images('pendulum_v0', show_imgs=False)
+    images_to_z('pendulum_v0',
+                'kl2rl1-z16-b100',
+                'tf_vae/kl2rl1-z16-b100-kl2rl1-b100-z16-pendulum_v0vae-fetch199.json',
+                z_size=16, batch_size=64)
 
     if False:
         generate('push_sphere_v0')
