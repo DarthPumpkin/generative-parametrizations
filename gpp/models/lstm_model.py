@@ -1,7 +1,7 @@
 import math
 import pickle
 from pathlib import Path
-from typing import Sequence, Tuple
+from typing import Sequence, Tuple, List
 
 import numpy as np
 import torch
@@ -28,7 +28,8 @@ class _LstmNetwork(nn.Module):
 
         self.hidden2out = nn.Linear(dense_h_units, n_outputs)
 
-    def forward(self, x: torch.Tensor, batch_size: int=None, hidden: (torch.Tensor, torch.Tensor)=None) -> (torch.Tensor, torch.Tensor):
+    def forward(self, x: torch.Tensor, batch_size: int = None, hidden: (torch.Tensor, torch.Tensor) = None) -> (
+    torch.Tensor, torch.Tensor):
         if hidden is None:
             assert batch_size is not None, 'Batch size must be specified if hidden is not provided'
             hidden = self.init_hidden(batch_size, x.device)
@@ -43,7 +44,8 @@ class _LstmNetwork(nn.Module):
 
 
 class LSTM_Model(BaseModel):
-    def __init__(self, n_inputs, n_hidden, n_outputs, n_layers=1, np_random=None, device=torch.device("cpu")):
+    def __init__(self, n_inputs, n_hidden, n_outputs, n_layers=1, window_size=5, np_random=None,
+                 device=torch.device("cpu")):
         """
         :param n_inputs:
         :param n_hidden: number of units in LSTM (same in each layer)
@@ -54,6 +56,7 @@ class LSTM_Model(BaseModel):
         """
         super().__init__(np_random=np_random)
         self.n_inputs, self.n_hidden, self.n_outputs, self.n_layers = n_inputs, n_hidden, n_outputs, n_layers
+        self.window_size = window_size
         self.network = _LstmNetwork(n_inputs, n_hidden, n_outputs, n_layers=n_layers)
 
         self.loss_function = nn.MSELoss()
@@ -87,7 +90,7 @@ class LSTM_Model(BaseModel):
         with open(file_path, 'wb') as f:
             pickle.dump(self, f)
 
-    def train(self, episodes: Sequence[Tuple[np.ndarray]], targets=None, window_size=5, epochs: int = None,
+    def train(self, episodes: Sequence[Tuple[np.ndarray]], targets=None, epochs: int = None,
               batch_size: int = None, epoch_callback=None, scale_data=False, scale_targets=False):
 
         if not epochs:
@@ -104,7 +107,7 @@ class LSTM_Model(BaseModel):
         # optimizer = torch.optim.RMSprop(self.network.parameters())
         optimizer = torch.optim.Adam(self.network.parameters(), lr=0.001)
 
-        dataset = LSTM_Dataset(episodes, window_size, observations=targets)
+        dataset = LSTM_Dataset(episodes, self.window_size, observations=targets)
         n_batches = math.ceil(len(dataset) / batch_size)
         dataset_order = np.random.permutation(len(dataset))
         # dataset_order = np.arange(len(dataset))
@@ -163,11 +166,26 @@ class LSTM_Model(BaseModel):
 
         return losses
 
-    def forward_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray):
+    def forward_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray,
+                    history: Tuple[List[np.array]] = None, **kwargs):
+
+        state_size, = initial_state.shape
+        n_sequences, horizon, action_size = action_sequences.shape
+        history_len = None
+        s_history, a_history = None, None
+
+        if history:
+            s_history, a_history = history
+            if len(s_history) != len(a_history):
+                raise ValueError()
+            s_history, a_history = s_history[-self.window_size:], a_history[-self.window_size:]
+            history_len = len(s_history)
+            if self._state_scaler is not None:
+                s_history = self._state_scaler.transform(s_history, copy=True)
+            if self._action_scaler is not None:
+                a_history = self._action_scaler.transform(a_history, copy=True)
 
         with torch.no_grad():
-
-            n_sequences, horizon, action_size = action_sequences.shape
 
             if self._action_scaler is not None:
                 # scale input actions
@@ -179,7 +197,6 @@ class LSTM_Model(BaseModel):
                 initial_state = initial_state.copy()
                 self._state_scaler.transform(initial_state.reshape(1, -1), copy=False)
 
-            state_size, = initial_state.shape
             self._check_input_sizes(state_size, action_size)
             outputs = torch.zeros((n_sequences, horizon, state_size))
             action_sequences = torch.Tensor(action_sequences).to(self.device)
@@ -189,15 +206,18 @@ class LSTM_Model(BaseModel):
 
             if self.use_window_in_forward_sim:
 
-                window_size = min(horizon, 5)
+                window_size = min(horizon, self.window_size)
                 input_ = torch.cat([curr_states, action_sequences[:, 0, :]], dim=1)
                 window = input_[:, None].repeat(1, window_size, 1)
+                if history:
+                    window[:, -history_len:, :state_size] = s_history
+                    window[:, -history_len:, state_size:] = a_history
 
                 hidden = self.network.init_hidden(n_sequences, device=self.device)
 
                 for t in range(horizon):
-                    window[:, :window_size-1] = window[:, 1:]
-                    window[:, window_size-1] = torch.cat([curr_states, action_sequences[:, t, :]], dim=1)
+                    window[:, :window_size - 1] = window[:, 1:]
+                    window[:, window_size - 1] = torch.cat([curr_states, action_sequences[:, t, :]], dim=1)
                     out, hidden = self.network.forward(window, hidden=hidden)
                     curr_states = out[:, -1].squeeze()
                     outputs[:, t, :] = curr_states
