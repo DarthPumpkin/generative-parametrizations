@@ -7,27 +7,29 @@ import torch
 import gym
 # from gym.envs.robotics import FetchPickAndPlaceSphereEnv, FetchReachEnv
 import numpy as np
+import pandas as pd
 
 import _gpp
 from gpp.models.lstm_model import LSTM_Model
 from gpp.models.utilities import get_observation_space, get_observations
 from gpp.mpc import MPC
 from gpp.dataset_old import EnvDataset
+from evaluate_mdn import evaluate
 
 
-BATCH_SIZE = 32
-TRAINING_EPOCHS = 100
+BATCH_SIZE = 128
+TRAINING_EPOCHS = 20
 N_EPISODES = 4000
-EPISODE_LENGTH = 100
-OVERWRITE_EXISTING = True
+EPISODE_LENGTH = 10
+OVERWRITE_EXISTING = False
 VISUAL_TEST = True
 
 # MDN_COMPONENTS = 6
-MPC_HORIZON = 5
-MPC_SEQUENCES = 50000
+MPC_HORIZON = 3
+MPC_SEQUENCES = 80000
 
-#ENV_ID = 'FetchPushSphereDense-v1'
-#EXP_NAME = 'push_sphere_lstm_strategy'
+ENV_ID = 'FetchPushSphereDense-v1'
+EXP_NAME = 'push_sphere_v0_lstm'
 
 ENV_ID = 'FetchReachDense-v1'
 EXP_NAME = 'reach_lstm'
@@ -38,13 +40,15 @@ def push_strategy(raw_env, obs):
         gripper_pos = obs[:3]
         object_pos = obs[3:6]
         delta = object_pos - gripper_pos
-        action = np.r_[delta, 0.0] * 5.0
+        dir_ = delta / np.linalg.norm(delta)
+        action = np.r_[delta + dir_*0.5, 0.0] * 5.0
         return action.clip(raw_env.action_space.low, raw_env.action_space.high)
     else:
         return raw_env.action_space.sample()
 
 
-STRATEGY = None
+STRATEGY = push_strategy
+STRATEGY_PERIOD = 10
 
 
 def main():
@@ -64,10 +68,10 @@ def main():
     n_inputs = observation_space.low.size + env.action_space.low.size
     n_outputs = observation_space.low.size
 
-    model = LSTM_Model(n_inputs, 50, n_outputs, np_random=np_random, device=device)
+    model = LSTM_Model(n_inputs, 50, n_outputs, n_layers=1, np_random=np_random, device=device)
 
     model_path = Path(f'./out/{EXP_NAME}_model.pkl')
-    # model_path = Path(f'./out/{EXP_NAME}_model_e20.pkl')
+    #model_path = Path(f'./out/{EXP_NAME}_model_e9.pkl')
     data_path = Path(f'./out/{EXP_NAME}_data.pkl')
 
     do_train = True
@@ -83,32 +87,39 @@ def main():
 
     if do_train:
 
-        do_generate = False
-        dataset = EnvDataset(env)
-        if data_path.exists():
-            print('Loading data...')
-            dataset.load(data_path)
-            if dataset.episodes != N_EPISODES or dataset.episode_length != EPISODE_LENGTH:
-                print('Existing data is not compatible with the desired parameters.')
-                do_generate = True
-        else:
-            do_generate = True
 
-        if do_generate:
-            print('Generating data...')
-            dataset.generate(N_EPISODES, EPISODE_LENGTH, strategy=STRATEGY)
-            dataset.save(data_path)
+
+        df = pd.read_pickle('../data/push_sphere_v0_details.pkl')
+        episode_length = df['step'].max() + 1
+        n_episodes = df['episode'].max() + 1
+
+        episodes = []
+        for i in range(n_episodes):
+            ep_df = df[df['episode'] == i]
+            actions = np.array(ep_df['raw_action'].tolist())
+            states = np.array(ep_df['raw_obs'].tolist())
+            episodes.append((states, actions[1:]))
+
+
+
+
+        dataset = EnvDataset(env)
+        dataset.generate(n_episodes, episode_length)
         episodes = dataset.data
+
+
 
         def epoch_callback(epoch, loss):
             print(epoch, loss)
             if epoch % 1 == 0:
                 path = Path(f'./out/{EXP_NAME}_model_e{epoch}.pkl')
                 model.save(path)
+                # evaluate(LSTM_Model, path, 'FetchPushSphereDense-v1', strategy=push_strategy)
+                evaluate(LSTM_Model, path, 'FetchReachDense-v1')
 
         print('Training...')
-        losses = model.train(episodes, TRAINING_EPOCHS, batch_size=BATCH_SIZE, epoch_callback=epoch_callback,
-                             scale_data=True)
+        losses = model.train(episodes, epochs=TRAINING_EPOCHS, batch_size=BATCH_SIZE, epoch_callback=epoch_callback,
+                             scale_data=True, scale_targets=True, window_size=1)
 
         print('Saving model...')
         model.save(model_path)
