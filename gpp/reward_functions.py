@@ -36,6 +36,12 @@ class RewardFunction:
                  actions: np.ndarray=None, dones: np.ndarray=None) -> (np.ndarray, np.ndarray):
         return self._reward_fn(states, goal=goal, actions=actions, dones=dones).squeeze()
 
+    @classmethod
+    def simplified_push_reward(cls, env: gym.Env):
+        self = RewardFunction(env)
+        self._reward_fn = _build_simplified_reward_fn_push_env(env.unwrapped)
+        return self
+
 
 def _build_reward_fn_cartpole_env(env: CartPoleEnv):
 
@@ -99,6 +105,40 @@ def _build_reward_fn_fetch_env(env: FetchEnv):
             return -(d > distance_threshold).astype(np.float32)
         else:
             return -d
+
+    return reward_fn
+
+
+def _build_simplified_reward_fn_push_env(env: FetchEnv):
+
+    from gym.envs.robotics import FetchPushEnv
+    assert isinstance(env, FetchPushEnv), 'Environment for this reward function must be of type FetchPushEnv!'
+    assert env.has_object, 'Environment used must have an object to push!'
+    assert env.reward_type == 'dense', 'This reward function is only defined for dense rewards!'
+
+    # achieved goal is object_pos
+    object_pos_idx = np.arange(3, 6)
+    gripper_pos_idx = np.arange(0, 3)
+
+    # used as distance gripper-to-object while pushing
+    obj_radius = 0.01
+
+    def reward_fn(x: np.ndarray, goal: np.ndarray=None, **kwargs):
+
+        # object and gripper positions
+        obj_pos = x.take(object_pos_idx, axis=-1)
+        grp_pos = x.take(gripper_pos_idx, axis=-1)
+
+        # object-goal distance and object-goal vector (normalized)
+        obj_goal_d = np.linalg.norm(obj_pos - goal, axis=-1)
+        obj_goal_v = (obj_pos - goal) / obj_goal_d.reshape(-1, 1)
+
+        # desired gripper position (behind the object) and distance to this goal
+        grp_goal_pos = obj_pos - obj_goal_v * obj_radius
+        grp_goal_d = np.linalg.norm(grp_pos - grp_goal_pos, axis=-1)
+
+        # total cost is the sum of the distances to the two goals
+        return -(obj_goal_d + grp_goal_d)
 
     return reward_fn
 
