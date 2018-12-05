@@ -178,12 +178,17 @@ class LSTM_Model(BaseModel):
             s_history, a_history = history
             if len(s_history) != len(a_history):
                 raise ValueError()
-            s_history, a_history = s_history[-self.window_size:], a_history[-self.window_size:]
+            s_history, a_history = s_history[1-self.window_size:], a_history[1-self.window_size:]
             history_len = len(s_history)
-            if self._state_scaler is not None:
-                s_history = self._state_scaler.transform(s_history, copy=True)
-            if self._action_scaler is not None:
-                a_history = self._action_scaler.transform(a_history, copy=True)
+
+            if history_len > 0:
+                if self._state_scaler is not None:
+                    s_history = self._state_scaler.transform(s_history, copy=True)
+                if self._action_scaler is not None:
+                    a_history = self._action_scaler.transform(a_history, copy=True)
+
+                s_history = torch.Tensor(s_history, device=self.device)
+                a_history = torch.Tensor(a_history, device=self.device)
 
         with torch.no_grad():
 
@@ -209,7 +214,10 @@ class LSTM_Model(BaseModel):
                 window_size = min(horizon, self.window_size)
                 input_ = torch.cat([curr_states, action_sequences[:, 0, :]], dim=1)
                 window = input_[:, None].repeat(1, window_size, 1)
-                if history:
+
+                if history_len:
+                    window[:, :, :state_size] = s_history[[0]].repeat(1, window_size, 1)
+                    window[:, :, state_size:] = a_history[[0]].repeat(1, window_size, 1)
                     window[:, -history_len:, :state_size] = s_history
                     window[:, -history_len:, state_size:] = a_history
 
