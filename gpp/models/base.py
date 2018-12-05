@@ -12,7 +12,7 @@ class BaseModel:
             np_random = np.random.RandomState()
         self.np_random = np_random
 
-    def forward_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray):
+    def forward_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray, *args, **kwargs):
         """
         Performs a forward pass on the given action sequences and returns the resulting states after each action
         :param action_sequences: the sequences of actions as a ndarray (n_sequences x horizon x action_space.size)
