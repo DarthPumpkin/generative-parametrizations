@@ -64,11 +64,16 @@ def _reset_fetch_sphere_big_longer_color(env):
 
 def _reset_pendulum_var_length(env):
     raw_env = env.unwrapped
-    raw_env.sampled_mass = np.random.uniform(0.05, 1.5)
-    scale_range = (0.2, 1.2)
-    new_scale = np.clip((raw_env.sampled_mass + 0.2) * 0.7, *scale_range)
+    new_mass = np.random.uniform(0.05, 1.5)
+    raw_env.sampled_mass = new_mass
+    scale_range = (0.4, 1.5)
+    new_scale = np.clip((new_mass + 0.4) * 0.7, *scale_range)
     raw_env.length_scale = new_scale
-    return None
+
+    return dict(
+        pendulum_length=new_scale,
+        pendulum_mass=new_mass
+    )
 
 
 def _reset_push_sphere_v0(env):
@@ -148,6 +153,13 @@ CONFIGS = dict(
         action_strategy=_push_strategy_v0,
         env_setup=_setup_fetch_sphere_big_longer,
         env_reset=_reset_push_sphere_v0
+    ),
+    pendulum_v0=dict(
+        env='Pendulum-v0',
+        size=(64, 64),
+        episodes=500,
+        episode_length=20,
+        env_reset=_reset_pendulum_var_length
     ),
 )
 
@@ -330,9 +342,13 @@ def images_to_z(config_name: str, vae_model_descr: str, vae_model: Path, **vae_k
 
 if __name__ == '__main__':
 
-    generate('push_sphere_v0')
-    check_images('push_sphere_v0', show_imgs=False)
-    images_to_z('push_sphere_v0',
-                'kl2rl1-z16-b250',
-                'tf_vae/kl2rl1-z16-b250-push_sphere_v0vae-fetch199.json',
-                z_size=16, batch_size=32)
+    generate('pendulum_v0')
+    check_images('pendulum_v0', show_imgs=True)
+
+    if False:
+        generate('push_sphere_v0')
+        check_images('push_sphere_v0', show_imgs=False)
+        images_to_z('push_sphere_v0',
+                    'kl2rl1-z16-b250',
+                    'tf_vae/kl2rl1-z16-b250-push_sphere_v0vae-fetch199.json',
+                    z_size=16, batch_size=32)
