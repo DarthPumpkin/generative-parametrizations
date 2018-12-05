@@ -7,6 +7,8 @@ from cv2 import resize, INTER_AREA
 import numpy as np
 import gym
 
+
+from gpp.world_models_vae import ConvVAE
 from gpp.models.utilities import get_observations
 
 
@@ -294,14 +296,43 @@ def check_images(config_name: str, show_imgs=False):
     print(f'Dataset contains {len(corrupted_idx)} corrupted image(s).')
 
 
+def images_to_z(config_name: str, vae_model_descr: str, vae_model: Path, **vae_kwargs):
+
+    config = CONFIGS[config_name]
+    episodes = config['episodes']
+    episode_length = config['episode_length']
+
+    vae = ConvVAE(is_training=False, reuse=False, gpu_mode=False, **vae_kwargs)
+    vae.load_json(vae_model)
+    batch_size = vae.batch_size
+    z_size = vae.z_size
+
+    images_path = f'../data/{config_name}_imgs.npz'
+    z_path = f'../data/{config_name}_latent_{vae_model_descr}.npz'
+
+    data = np.load(images_path)['arr_0'] / 255.
+    output_z = np.zeros((len(data), z_size))
+
+    n_batches = int(np.ceil(len(data)/batch_size))
+    for b in range(n_batches):
+        batch = data[batch_size*b: batch_size*(b+1)]
+        actual_bs = len(batch)
+        if actual_bs < batch_size:
+            padded = np.zeros((batch_size,) + data.shape[1:])
+            padded[:actual_bs] = batch
+            batch = padded
+        batch_z = vae.encode(batch)[:actual_bs]
+        output_z[batch_size*b: batch_size*(b+1)] = batch_z
+
+    output_z = output_z.reshape((episodes, episode_length, -1))
+    np.savez_compressed(z_path, output_z)
+
+
 if __name__ == '__main__':
 
     generate('push_sphere_v0')
     check_images('push_sphere_v0', show_imgs=False)
-
-    exit(0)
-
-    for k in CONFIGS.keys():
-        generate(k)
-    crop('fetch_sphere_big_longer', 64)
-    crop('fetch_sphere_big_longer_color', 64)
+    images_to_z('push_sphere_v0',
+                'kl2rl1-z16-b250',
+                'tf_vae/kl2rl1-z16-b250-push_sphere_v0vae-fetch199.json',
+                z_size=16, batch_size=32)
