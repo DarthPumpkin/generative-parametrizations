@@ -23,9 +23,11 @@ class LSTMModel:
         self.vae = self.__load_vae()
         if training:
             self.create_sliding_dataset()
-        else:  # Predicting
+        try:
             self.l2l_model = self.__load_model(l2l_model_path)
             self.l2reward_model = self.__load_model(l2reward_model_path)
+        except OSError:
+            pass
 
     def __load_vae(self):
         vae = ConvVAE(z_size=self.z_size, is_training=False, reuse=False, gpu_mode=False)
@@ -34,7 +36,6 @@ class LSTMModel:
         return vae
 
     def __load_model(self, model_path) -> Model:
-        K.clear_session()
         return load_model(model_path)
 
     def __load_latent_predictions(self):
@@ -54,7 +55,7 @@ class LSTMModel:
         for i in range(df['episode'].max() + 1):
             ep_df = df[df['episode'] == i]
             action = np.array(ep_df['raw_action'].tolist())
-            reward = np.array(ep_df['reward'].tolist())
+            reward = np.array(ep_df['reward_modified'].tolist())
             rewards.append(reward)
             actions.append(action)
         x = []
@@ -66,7 +67,7 @@ class LSTMModel:
                 state_action = np.concatenate([d[start_idx: j], actions[i][start_idx: j]], axis=1)
                 x.append(state_action)
                 y_latent.append(d[j])
-                y_rewards.append(rewards[j])
+                y_rewards.append(rewards[i][j])
                 start_idx += 1
         x = np.array(x)
         y_latent = np.array(y_latent)
@@ -78,7 +79,7 @@ class LSTMModel:
     def build_l2reward_model(self):
         self.__load_latent_predictions()
         model = Sequential()
-        model.add(Dense(64, input_shape=(self.y_latent,), activation='relu'))
+        model.add(Dense(64, input_shape=(self.latent_predictions.shape[1],), activation='relu'))
         model.add(Dense(32, activation='relu'))
         model.add(Dense(1, activation='linear'))
         model.compile(loss='mse', optimizer='adam')
@@ -92,9 +93,9 @@ class LSTMModel:
         model.add(Dense(64, activation='relu'))
         model.add(Dense(self.y_latent.shape[-1], activation='linear'))
         model.compile(loss='mse', optimizer='adam')
-        model.fit(self.x, self.y_latent, batch_size=32, epochs=10,
+        model.fit(self.x, self.y_latent, batch_size=32, epochs=2,
                       shuffle=False, validation_split=0.1, verbose=2)
-        save_model(model, self.l2l_model_path)
+        model.save(self.l2l_model_path)
 
     @staticmethod
     def unison_shuffled_copies(a, b, c):
@@ -179,10 +180,12 @@ class LSTMModel:
 
 """EXAMPLE CODE TO TRAIN MODELS"""
 vae_path = '../scripts/best_models/carlomodel/kl2rl1-z16-b250-push_sphere_v0vae-fetch199.json'
-l2l_modelpath = 'trained_models/l2lmodel.hdf5'
-l2reward_modelpath = 'trained_models/l2rewardmodel.hdf5'
-dataset_path = '../data/push_sphere_v0_latent_kl2rl1-z16-b250.npz'
-dataset_detail_path = '../data/push_sphere_v0_details.pkl'
+l2l_modelpath = 'trained_models/l2lmodel.h5'
+l2reward_modelpath = 'trained_models/l2rewardmodel.h5'
+
+dataset_path = '../data/push_sphere_v1_latent_kl2rl1-z16-b250.npz'
+dataset_detail_path = '../data/push_sphere_v1_details.pkl'
+
 example_train = LSTMModel(vae_path, z_size=16, steps=4, training=True, l2l_model_path=l2l_modelpath,
                           l2reward_model_path=l2reward_modelpath, dataset_path=dataset_path,
                           dataset_detail_path=dataset_detail_path)
