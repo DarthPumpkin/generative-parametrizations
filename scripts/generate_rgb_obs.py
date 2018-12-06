@@ -10,6 +10,7 @@ import gym
 
 from gpp.world_models_vae import ConvVAE
 from gpp.models.utilities import get_observations
+from reward_functions import RewardFunction
 
 
 def _setup_fetch_sphere_big(env):
@@ -27,6 +28,11 @@ def _setup_fetch_sphere_big_longer(env):
     raw_env = env.unwrapped
     raw_env.block_gripper = True
     _setup_fetch_sphere_big(env)
+
+
+def _random_strategy(env, obs):
+    raw_env = env.unwrapped
+    return raw_env.action_space.sample()
 
 
 def _push_strategy_v0(env, obs):
@@ -154,12 +160,25 @@ CONFIGS = dict(
         env_setup=_setup_fetch_sphere_big_longer,
         env_reset=_reset_push_sphere_v0
     ),
+    push_sphere_v1=dict(
+        env='FetchPushSphereDense-v1',
+        size=(64, 64),
+        episodes=1000,
+        episode_length=10,
+        rgb_options=dict(camera_id=3),
+        action_strategy_eps=1./4,
+        action_strategy=_push_strategy_v0,
+        env_setup=_setup_fetch_sphere_big_longer,
+        env_reset=_reset_push_sphere_v0
+    ),
     pendulum_v0=dict(
         env='Pendulum-v0',
         size=(64, 64),
         episodes=500,
         episode_length=20,
-        env_reset=_reset_pendulum_var_length
+        env_reset=_reset_pendulum_var_length,
+        action_strategy_eps=0.0,
+        action_strategy=_random_strategy,
     ),
 )
 
@@ -185,6 +204,9 @@ def generate(config_name: str, overwrite=False):
     env = gym.make(config['env'])
     raw_env = env.unwrapped
 
+    reward_fn_original = RewardFunction(env)
+    reward_fn_modified = RewardFunction.simplified_push_reward(env)
+
     render_kwargs = dict(mode='rgb_array')
     if rgb_options is not None:
         render_kwargs['rgb_options'] = rgb_options
@@ -197,7 +219,7 @@ def generate(config_name: str, overwrite=False):
     details = []
 
     for e in tqdm(range(episodes)):
-        env.reset()
+        env_obs = env.reset()
 
         action = 0.0 * raw_env.action_space.sample()
         episode_info = None
@@ -211,6 +233,9 @@ def generate(config_name: str, overwrite=False):
         for s in range(episode_length):
 
             raw_obs = get_observations(env)
+
+            reward_original = reward_fn_original(raw_obs, goal=env_obs['desired_goal'])
+            reward_modified = reward_fn_modified(raw_obs, goal=env_obs['desired_goal'])
 
             while True:
                 img = env.render(**render_kwargs)
@@ -228,6 +253,8 @@ def generate(config_name: str, overwrite=False):
                 episode=e,
                 raw_obs=raw_obs,
                 raw_action=action,
+                reward_original=reward_original,
+                reward_modified=reward_modified,
                 **episode_info
             ))
 
@@ -238,8 +265,7 @@ def generate(config_name: str, overwrite=False):
             else:
                 raise ValueError('Action strategy must be callable!')
 
-            action += np.random.normal(scale=1.0)
-            env.step(action)
+            env_obs, _, _, _ = env.step(action)
 
     images = np.array(images)
     np.savez_compressed(images_path, images)
@@ -340,19 +366,56 @@ def images_to_z(config_name: str, vae_model_descr: str, vae_model: Path, **vae_k
     np.savez_compressed(z_path, output_z)
 
 
+
+def test_images_to_z(config_name: str, vae_model_descr: str, vae_model: Path, **vae_kwargs):
+
+    config = CONFIGS[config_name]
+    episodes = config['episodes']
+    episode_length = config['episode_length']
+
+    vae = ConvVAE(is_training=False, reuse=False, gpu_mode=False, **vae_kwargs)
+    vae.load_json(vae_model)
+    batch_size = vae.batch_size
+    z_size = vae.z_size
+
+    images_path = f'../data/{config_name}_imgs.npz'
+    z_path = f'../data/{config_name}_latent_{vae_model_descr}.npz'
+
+    data = np.load(images_path)['arr_0'] / 255.
+
+    all_z = np.load(z_path)['arr_0']
+
+    for _ in range(20):
+        rand_i = np.random.randint(0, len(data))
+        ep = rand_i // episode_length
+        ep_step = rand_i % episode_length
+        z = all_z[ep, ep_step]
+        padded = np.zeros((batch_size, z_size))
+        padded[0] = z
+        recon = vae.decode(padded)[0]
+        img = data[rand_i]
+        zipped = np.zeros((64, 128, 3))
+        zipped[:, :64] = img
+        zipped[:, 64:] = recon
+        plt.imshow(zipped)
+        plt.show()
+
+
 if __name__ == '__main__':
 
-    generate('pendulum_v0')
-    check_images('pendulum_v0', show_imgs=False)
-    images_to_z('pendulum_v0',
-                'kl2rl1-z16-b100',
-                'tf_vae/kl2rl1-z16-b100-kl2rl1-b100-z16-pendulum_v0vae-fetch199.json',
-                z_size=16, batch_size=64)
 
     if False:
-        generate('push_sphere_v0')
-        check_images('push_sphere_v0', show_imgs=False)
-        images_to_z('push_sphere_v0',
+        generate('pendulum_v0')
+        check_images('pendulum_v0', show_imgs=False)
+        test_images_to_z('pendulum_v0',
+                    'kl2rl1-z6-b100',
+                    'tf_vae/kl2rl1-z6-b100-kl2rl1-b100-z6-pendulum_v0vae-fetch199.json',
+                    z_size=6, batch_size=64)
+
+    if True:
+        generate('push_sphere_v1')
+        check_images('push_sphere_v1', show_imgs=False)
+        images_to_z('push_sphere_v1',
                     'kl2rl1-z16-b250',
                     'tf_vae/kl2rl1-z16-b250-push_sphere_v0vae-fetch199.json',
                     z_size=16, batch_size=32)
