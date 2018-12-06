@@ -8,9 +8,10 @@ from .models import BaseModel
 
 class MPC:
 
-    def __init__(self, env: gym.Env, model: BaseModel, horizon: int, n_action_sequences: int, np_random=None):
+    def __init__(self, env: gym.Env, model: BaseModel, horizon: int, n_action_sequences: int,
+                 np_random=None, reward_function=None, use_history=False):
 
-        self.reward_function = RewardFunction(env)
+        self.reward_function = reward_function or RewardFunction(env)
 
         if np_random is None:
             np_random = np.random.RandomState()
@@ -20,11 +21,23 @@ class MPC:
         self.n_action_sequences = n_action_sequences
         self.horizon = horizon
         self.model = model
+        self.use_history = use_history
+        self.a_history = []
+        self.s_history = []
+
+    def forget_history(self):
+        self.a_history = []
+        self.s_history = []
+
+    @property
+    def history(self):
+        return self.s_history, self.a_history
 
     def get_action(self, current_state: np.ndarray):
 
         npr = self.np_random
         action_space = self.env.action_space
+        current_state = current_state.copy()
 
         if isinstance(action_space, Box):
             all_actions = npr.uniform(action_space.low, action_space.high,
@@ -35,7 +48,11 @@ class MPC:
         else:
             raise NotImplementedError
 
-        all_states = self.model.forward_sim(all_actions, current_state.copy())
+        if self.use_history:
+            all_states = self.model.forward_sim(all_actions, current_state, history=self.history)
+            self.s_history.append(current_state)
+        else:
+            all_states = self.model.forward_sim(all_actions, current_state)
 
         if hasattr(self.env.unwrapped, 'goal'):
             goal = self.env.unwrapped.goal
@@ -54,6 +71,11 @@ class MPC:
             rewards += self.reward_function(all_states[:, t], goal=goal, actions=all_actions[:, t], dones=dones)
 
         max_reward_i = rewards.argmax()
+        print("Max reward: ", rewards[max_reward_i])
+        print("Init reward: ", self.horizon * self.reward_function(current_state.reshape(1, -1), goal=goal, actions=np.zeros((1, 4))))
         best_action = all_actions[max_reward_i, 0]
+
+        if self.use_history:
+            self.a_history.append(best_action.copy())
 
         return best_action

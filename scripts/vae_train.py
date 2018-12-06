@@ -29,8 +29,8 @@ all_settings.append(TrainSetting(0, 0, 0, 32))
 all_settings.append(TrainSetting(0, 1, 0, 32))
 all_settings.append(TrainSetting(0, 2, 0, 32))
 
-all_settings.append(TrainSetting(1, 0, 100, 32))
-all_settings.append(TrainSetting(1, 1, 100, 32))
+# all_settings.append(TrainSetting(1, 0, 100, 32))
+# all_settings.append(TrainSetting(1, 1, 100, 32))
 # all_settings.append(TrainSetting(1, 2, 100, 32))
 
 # all_settings.append(TrainSetting(2, 0, 100, 32))
@@ -47,7 +47,7 @@ all_settings.append(TrainSetting(1, 1, 100, 32))
 # all_settings.append(TrainSetting(2, 1, 300, 32))
 # all_settings.append(TrainSetting(2, 1, 400, 32))
 # all_settings.append(TrainSetting(2, 1, 500, 32))
-all_settings.append(TrainSetting(2, 1, 600, 32))
+# all_settings.append(TrainSetting(2, 1, 600, 32))
 
 """TRAIN SUPER MODELS"""
 # all_settings.append(TrainSetting(2, 1, 150, 16))
