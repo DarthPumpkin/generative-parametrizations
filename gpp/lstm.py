@@ -79,11 +79,13 @@ class LSTMModel:
     def build_l2reward_model(self):
         self.__load_latent_predictions()
         model = Sequential()
-        model.add(Dense(64, input_shape=(self.latent_predictions.shape[1],), activation='relu'))
+        model.add(Dense(128, input_shape=(self.latent_predictions.shape[1],), activation='relu'))
+        model.add(Dense(64, activation='relu'))
+        model.add(Dropout(0.5))
         model.add(Dense(32, activation='relu'))
         model.add(Dense(1, activation='linear'))
         model.compile(loss='mse', optimizer='adam')
-        model.fit(self.latent_predictions, self.rewards, batch_size=32, epochs=50, validation_split=0.3, verbose=2)
+        model.fit(self.latent_predictions, self.rewards, batch_size=32, epochs=20, validation_split=0.3, verbose=2)
         save_model(model, self.l2reward_model_path)
 
     def build_l2l_model(self):
@@ -93,7 +95,7 @@ class LSTMModel:
         model.add(Dense(64, activation='relu'))
         model.add(Dense(self.y_latent.shape[-1], activation='linear'))
         model.compile(loss='mse', optimizer='adam')
-        model.fit(self.x, self.y_latent, batch_size=32, epochs=2,
+        model.fit(self.x, self.y_latent, batch_size=32, epochs=10,
                       shuffle=False, validation_split=0.1, verbose=2)
         model.save(self.l2l_model_path)
 
@@ -190,6 +192,6 @@ example_train = LSTMModel(vae_path, z_size=16, steps=4, training=True, l2l_model
                           l2reward_model_path=l2reward_modelpath, dataset_path=dataset_path,
                           dataset_detail_path=dataset_detail_path)
 
-example_train.build_l2l_model()
+# example_train.build_l2l_model()
 example_train.build_l2reward_model()
 print("DONE")
