@@ -11,12 +11,14 @@ np.set_printoptions(suppress=True)
 
 class LSTMModel:
     def __init__(self, vae_path=None, z_size=16, steps=4, training=True,
-                 l2l_model_path=None, l2reward_model_path=None, dataset_path=None, dataset_detail_path=None):
+                 l2l_model_path=None, l2reward_model_path=None, dataset_path=None,
+                 dataset_detail_path=None, reward_key='reward'):
         self.z_size = z_size
         self.steps = steps
         self.vae_path = vae_path
         self.l2l_model_path = l2l_model_path
         self.l2reward_model_path = l2reward_model_path
+        self.reward_key = reward_key
         self.dataset_path = dataset_path
         self.dataset_detail_path = dataset_detail_path
         self.x = self.y_latent = self.latent_predictions = self.rewards = None
@@ -55,7 +57,7 @@ class LSTMModel:
         for i in range(df['episode'].max() + 1):
             ep_df = df[df['episode'] == i]
             action = np.array(ep_df['raw_action'].tolist())
-            reward = np.array(ep_df['reward_modified'].tolist())
+            reward = np.array(ep_df[self.reward_key].tolist())
             rewards.append(reward)
             actions.append(action)
         x = []
@@ -181,17 +183,17 @@ class LSTMModel:
 
 
 """EXAMPLE CODE TO TRAIN MODELS"""
-vae_path = '../scripts/best_models/carlomodel/kl2rl1-z16-b250-push_sphere_v0vae-fetch199.json'
-l2l_modelpath = 'trained_models/l2lmodel.h5'
-l2reward_modelpath = 'trained_models/l2rewardmodel.h5'
-
-dataset_path = '../data/push_sphere_v1_latent_kl2rl1-z16-b250.npz'
-dataset_detail_path = '../data/push_sphere_v1_details.pkl'
-
-example_train = LSTMModel(vae_path, z_size=16, steps=4, training=True, l2l_model_path=l2l_modelpath,
-                          l2reward_model_path=l2reward_modelpath, dataset_path=dataset_path,
-                          dataset_detail_path=dataset_detail_path)
-
-# example_train.build_l2l_model()
-example_train.build_l2reward_model()
-print("DONE")
+# vae_path = '../scripts/best_models/carlomodel/kl2rl1-z16-b250-push_sphere_v0vae-fetch199.json'
+# l2l_modelpath = 'trained_models/l2lmodel.h5'
+# l2reward_modelpath = 'trained_models/l2rewardmodel.h5'
+#
+# dataset_path = '../data/push_sphere_v1_latent_kl2rl1-z16-b250.npz'
+# dataset_detail_path = '../data/push_sphere_v1_details.pkl'
+#
+# example_train = LSTMModel(vae_path, z_size=16, steps=4, training=True, l2l_model_path=l2l_modelpath,
+#                           l2reward_model_path=l2reward_modelpath, dataset_path=dataset_path,
+#                           dataset_detail_path=dataset_detail_path)
+#
+# # example_train.build_l2l_model()
+# example_train.build_l2reward_model()
+# print("DONE")
