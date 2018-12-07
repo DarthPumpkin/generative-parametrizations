@@ -113,7 +113,7 @@ class LSTMModel:
     def build_l2l_model(self):
         callbacks = [ReduceLROnPlateau(factor=0.9, patience=6, verbose=1), EarlyStopping(patience=10)]
         model = Sequential()
-        model.add(LSTM(128, input_shape=(self.x.shape[-2], self.x.shape[-1]), return_sequences=False))
+        model.add(LSTM(128, input_shape=(self.x.shape[-2], self.x.shape[-1]), return_sequences=True))
         # model.add(Dropout(0.1))
         model.add(LSTM(64))
         model.add(Dense(64, activation='relu'))
@@ -209,30 +209,37 @@ class LSTMModel:
     #     plt.savefig('lstm_future_plot.pdf', format='pdf')
     #     plt.show()
 
+def main():
 
-"""EXAMPLE CODE TO TRAIN MODELS"""
-all_reward_keys = ['reward_exp0.5_coeff0.2', 'reward_exp0.5_coeff0.5',
-                   'reward_exp0.5_coeff1', 'reward_exp0.5_coeff2', 'reward_exp0.5_coeff5',
-                   'reward_exp1_coeff0.2', 'reward_exp1_coeff0.5', 'reward_exp1_coeff1',
-                   'reward_exp1_coeff2', 'reward_exp1_coeff5', 'reward_exp2_coeff0.2',
-                   'reward_exp2_coeff0.5', 'reward_exp2_coeff1', 'reward_exp2_coeff2',
-                   'reward_exp2_coeff5', 'reward_exp3_coeff0.2', 'reward_exp3_coeff0.5',
-                   'reward_exp3_coeff1', 'reward_exp3_coeff2', 'reward_exp3_coeff5',
-                   'reward_original']
-reward_key = 'reward_exp2_coeff1'
+    """EXAMPLE CODE TO TRAIN MODELS"""
+    all_reward_keys = ['reward_exp0.5_coeff0.2', 'reward_exp0.5_coeff0.5',
+                       'reward_exp0.5_coeff1', 'reward_exp0.5_coeff2', 'reward_exp0.5_coeff5',
+                       'reward_exp1_coeff0.2', 'reward_exp1_coeff0.5', 'reward_exp1_coeff1',
+                       'reward_exp1_coeff2', 'reward_exp1_coeff5', 'reward_exp2_coeff0.2',
+                       'reward_exp2_coeff0.5', 'reward_exp2_coeff1', 'reward_exp2_coeff2',
+                       'reward_exp2_coeff5', 'reward_exp3_coeff0.2', 'reward_exp3_coeff0.5',
+                       'reward_exp3_coeff1', 'reward_exp3_coeff2', 'reward_exp3_coeff5',
+                       'reward_original']
 
-dataset_detail_path = '../data/push_sphere_v2_details.pkl'
-vae_path = '../scripts/best_models/carlomodel/kl2rl1-z16-b250-push_sphere_v0vae-fetch199.json'
-l2l_modelpath = 'trained_models/l2lmodel.h5'
-l2reward_modelpath = f'trained_models/l2rewardmodel-{reward_key}.h5'
+    dataset_detail_path = '../data/push_sphere_v2_details.pkl'
+    vae_path = '../scripts/colab_models/kl2rl1-z16-b250-push_sphere_v0vae-fetch199.json'
+    dataset_path = '../data/push_sphere_v2_latent_kl2rl1-z16-b250.npz'
+    l2l_modelpath = 'trained_models/l2lmodel.h5'
 
-dataset_path = '../data/push_sphere_v2_latent_kl2rl1-z16-b250.npz'
+    for current_key in all_reward_keys:
+
+        reward_key = current_key #'reward_exp2_coeff1'
+
+        l2reward_modelpath = f'trained_models/l2rewardmodel-{reward_key}.h5'
+
+        example_train = LSTMModel(vae_path, z_size=16, steps=4, training=True, l2l_model_path=l2l_modelpath,
+                                  l2reward_model_path=l2reward_modelpath, dataset_path=dataset_path,
+                                  dataset_detail_path=dataset_detail_path, reward_key=reward_key)
+
+        # example_train.build_l2l_model()
+        example_train.build_l2reward_model()
+        print("DONE")
 
 
-example_train = LSTMModel(vae_path, z_size=16, steps=4, training=True, l2l_model_path=l2l_modelpath,
-                          l2reward_model_path=l2reward_modelpath, dataset_path=dataset_path,
-                          dataset_detail_path=dataset_detail_path, reward_key=reward_key)
-
-# example_train.build_l2l_model()
-example_train.build_l2reward_model()
-print("DONE")
+if __name__ == '__main__':
+    main()

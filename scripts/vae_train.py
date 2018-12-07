@@ -111,7 +111,7 @@ model_save_path = "tf_vae"
 os.makedirs(model_save_path, exist_ok=True)
 os.makedirs(IMG_OUTPUT_DIR, exist_ok=True)
 
-pendulum_data = False
+pendulum_data = True
 data_path = "../data"
 
 if pendulum_data:
