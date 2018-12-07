@@ -2,7 +2,7 @@ import os
 from gpp.world_models_vae import ConvVAE
 import numpy as np
 from keras import Sequential, Model
-from keras import backend as K
+from keras.callbacks import ReduceLROnPlateau, EarlyStopping
 from keras.models import save_model, load_model
 from keras.layers import LSTM, Dense, Dropout
 import pandas as pd
@@ -21,6 +21,8 @@ class LSTMModel:
         self.dataset_detail_path = dataset_detail_path
         self.x = self.y_latent = self.latent_predictions = self.rewards = None
         self.vae = self.__load_vae()
+        self.reward_avg = 0
+        self.reward_std = 0
         if training:
             self.create_sliding_dataset()
         try:
@@ -63,11 +65,11 @@ class LSTMModel:
         y_rewards = []
         for i, d in enumerate(dataset):
             start_idx = 0
-            for j in range(self.steps, d.shape[0]):
+            for j in range(self.steps, d.shape[0]-1):
                 state_action = np.concatenate([d[start_idx: j], actions[i][start_idx: j]], axis=1)
                 x.append(state_action)
                 y_latent.append(d[j])
-                y_rewards.append(rewards[i][j])
+                y_rewards.append(rewards[i][j+1])
                 start_idx += 1
         x = np.array(x)
         y_latent = np.array(y_latent)
@@ -78,14 +80,36 @@ class LSTMModel:
 
     def build_l2reward_model(self):
         self.__load_latent_predictions()
+        samples = int(0.9 * len(self.latent_predictions))
+        self.latent_predictions, self.rewards = self.unison_shuffleds(self.latent_predictions, self.rewards)
+        x_train = self.latent_predictions[:samples]
+        y_train = self.rewards[:samples]
+        x_test = self.latent_predictions[samples:]
+        y_test = self.rewards[samples:]
+        callbacks = [ReduceLROnPlateau(factor=0.9, patience=6, verbose=1), EarlyStopping(patience=10)]
+
         model = Sequential()
-        model.add(Dense(128, input_shape=(self.latent_predictions.shape[1],), activation='relu'))
+        model.add(Dense(512, activation='relu'))
+        model.add(Dropout(0.2))
+        model.add(Dense(256, activation='relu'))
+        model.add(Dropout(0.2))
+        model.add(Dense(128, activation='relu'))
+        model.add(Dropout(0.2))
         model.add(Dense(64, activation='relu'))
-        model.add(Dropout(0.5))
-        model.add(Dense(32, activation='relu'))
         model.add(Dense(1, activation='linear'))
-        model.compile(loss='mse', optimizer='adam')
-        model.fit(self.latent_predictions, self.rewards, batch_size=32, epochs=20, validation_split=0.3, verbose=2)
+
+        model.compile(loss='mse', optimizer='rmsprop')
+        model.fit(x_train, y_train, batch_size=32, epochs=250, validation_split=0.1, verbose=2, callbacks=callbacks)
+        rewards = model.predict(x_test)
+        diff = 0
+        for i, (actual, pred) in enumerate(zip(rewards, y_test)):
+            act = float(actual[0])
+            # act = (act * self.reward_std) + self.reward_avg
+            # pred = (pred * self.reward_std) + self.reward_avg
+            if i % 20 == 0:
+                print(f'{np.round(act, 2)} -- {round(pred, 2)}')
+            diff += abs(act - pred)
+        print(diff / len(rewards))
         save_model(model, self.l2reward_model_path)
 
     def build_l2l_model(self):
@@ -95,7 +119,7 @@ class LSTMModel:
         model.add(Dense(64, activation='relu'))
         model.add(Dense(self.y_latent.shape[-1], activation='linear'))
         model.compile(loss='mse', optimizer='adam')
-        model.fit(self.x, self.y_latent, batch_size=32, epochs=10,
+        model.fit(self.x, self.y_latent, batch_size=32, epochs=20,
                       shuffle=False, validation_split=0.1, verbose=2)
         model.save(self.l2l_model_path)
 
@@ -104,6 +128,12 @@ class LSTMModel:
         assert len(a) == len(b) == len(c)
         p = np.random.permutation(len(a))
         return a[p], b[p], c[p]
+
+    @staticmethod
+    def unison_shuffleds(a, b):
+        assert len(a) == len(b)
+        p = np.random.permutation(len(a))
+        return a[p], b[p]
 
     # @staticmethod
     # def _plot_previous_images(imgs, pred_idx, predicted_img, target_img):
@@ -194,4 +224,5 @@ example_train = LSTMModel(vae_path, z_size=16, steps=4, training=True, l2l_model
 
 # example_train.build_l2l_model()
 example_train.build_l2reward_model()
+# example_train.build_l2reward_lstm()
 print("DONE")
