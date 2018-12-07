@@ -16,7 +16,7 @@ plt.rcParams["errorbar.capsize"] = 2
 
 
 class TrainSetting:
-    def __init__(self, kl_opt, reconstruct_opt, b_in, z_size, dataset_name="push_sphere_v0"):
+    def __init__(self, kl_opt, reconstruct_opt, b_in, z_size, dataset_name="pendulum_v0_imgs.npz"):
         self.kl_opt = kl_opt,
         self.reconstruct_opt = reconstruct_opt
         self.b = b_in
@@ -25,9 +25,9 @@ class TrainSetting:
 
 all_settings = []
 """TRAIN KNOWN BAD MODELS"""
-all_settings.append(TrainSetting(0, 0, 0, 32))
-all_settings.append(TrainSetting(0, 1, 0, 32))
-all_settings.append(TrainSetting(0, 2, 0, 32))
+# all_settings.append(TrainSetting(0, 0, 0, 32))
+# all_settings.append(TrainSetting(0, 1, 0, 32))
+# all_settings.append(TrainSetting(0, 2, 0, 32))
 
 # all_settings.append(TrainSetting(1, 0, 100, 32))
 # all_settings.append(TrainSetting(1, 1, 100, 32))
@@ -58,44 +58,39 @@ all_settings.append(TrainSetting(0, 2, 0, 32))
 # all_settings.append(TrainSetting(2, 1, 500, 16))
 # all_settings.append(TrainSetting(2, 1, 600, 16))
 
+
+""" ____________ PENDULUM MODELS ______________"""
+""" TRAIN KNOWN BAD MODELS"""
+all_settings.append(TrainSetting(0, 0, 0, 8))
+all_settings.append(TrainSetting(0, 1, 0, 8))
+all_settings.append(TrainSetting(0, 2, 0, 8))
+
+all_settings.append(TrainSetting(1, 0, 100, 8))
+all_settings.append(TrainSetting(1, 1, 100, 8))
+all_settings.append(TrainSetting(1, 2, 100, 8))
+
+all_settings.append(TrainSetting(2, 0, 100, 8))
+all_settings.append(TrainSetting(2, 1, 100, 8))
+all_settings.append(TrainSetting(2, 2, 100, 8))
+
+""" TRAIN GOOD MODELS """
+all_settings.append(TrainSetting(2, 1, 10,  8))
+all_settings.append(TrainSetting(2, 1, 50,  8))
+all_settings.append(TrainSetting(2, 1, 100, 8))
+all_settings.append(TrainSetting(2, 1, 150, 8))
+all_settings.append(TrainSetting(2, 1, 200, 8))
+all_settings.append(TrainSetting(2, 1, 250, 8))
+all_settings.append(TrainSetting(2, 1, 300, 8))
+
+""" COMPRESSED GOOD MODELS """
+all_settings.append(TrainSetting(2, 1, 50,  4))
+all_settings.append(TrainSetting(2, 1, 100, 4))
+all_settings.append(TrainSetting(2, 1, 150, 4))
+
+
+
+
 all_settings = all_settings[::-1]
-
-# all_settings.append(TrainSetting(0, 0, 0, "kl0-rl0-b0"))
-# all_settings.append(TrainSetting(0, 1, 0, "kl0-rl1-b0"))
-# all_settings.append(TrainSetting(0, 2, 0, "kl0-rl2-b0"))
-#
-# all_settings.append(TrainSetting(1, 0, 10, "kl1-rl0-b10"))
-# all_settings.append(TrainSetting(1, 1, 10, "kl1-rl1-b10"))
-# all_settings.append(TrainSetting(1, 2, 10, "kl1-rl2-b10"))
-#
-# all_settings.append(TrainSetting(1, 0, 50, "kl1-rl0-b50"))
-# all_settings.append(TrainSetting(1, 1, 50, "kl1-rl1-b50"))
-# all_settings.append(TrainSetting(1, 2, 50, "kl1-rl2-b50"))
-#
-# all_settings.append(TrainSetting(1, 0, 100, "kl1-rl0-b100"))
-# all_settings.append(TrainSetting(1, 1, 100, "kl1-rl1-b100"))
-# all_settings.append(TrainSetting(1, 2, 100, "kl1-rl2-b100"))
-#
-# all_settings.append(TrainSetting(2, 0, 10, "kl2-rl0-b10"))
-# all_settings.append(TrainSetting(2, 1, 10, "kl2-rl1-b10"))
-# all_settings.append(TrainSetting(2, 2, 10, "kl2-rl2-b10"))
-#
-# all_settings.append(TrainSetting(2, 0, 50, "kl2-rl0-b50"))
-# all_settings.append(TrainSetting(2, 1, 50, "kl2-rl1-b50"))
-# all_settings.append(TrainSetting(2, 2, 50, "kl2-rl2-b50"))
-#
-# all_settings.append(TrainSetting(2, 0, 100, "kl2-rl0-b100"))
-# all_settings.append(TrainSetting(2, 1, 100, "kl2-rl1-b100"))
-# all_settings.append(TrainSetting(2, 2, 100, "kl2-rl2-b100"))
-
-# all_settings.append(TrainSetting(2, 1, 100, 16, "kl2rl1-b100-z16-colordataset"))
-# all_settings.append(TrainSetting(2, 1, 150, 16, "kl2rl1-b150-z16-colordataset"))
-# all_settings.append(TrainSetting(2, 1, 200, 16, "kl2rl1-b200-z16-colordataset"))
-#
-# all_settings.append(TrainSetting(2, 1, 100, 32, "kl2rl1-b100-z32-colordataset"))
-# all_settings.append(TrainSetting(2, 1, 150, 32, "kl2rl1-b150-z32-colordataset"))
-# all_settings.append(TrainSetting(2, 1, 200, 32, "kl2rl1-b200-z32-colordataset"))
-
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # can just override for multi-gpu systems
 
