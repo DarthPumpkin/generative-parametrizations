@@ -1,6 +1,7 @@
 # Misc
 MUJOCO_LOG.TXT
 colab_models/
+trained_models/
 
 # PyCharm
 .idea/

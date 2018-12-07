@@ -111,12 +111,12 @@ model_save_path = "tf_vae"
 os.makedirs(model_save_path, exist_ok=True)
 os.makedirs(IMG_OUTPUT_DIR, exist_ok=True)
 
-pendulum_data = False
-data_path = "../data"
+pendulum_data = True
+data_path = os.path.join('..', 'data')
 
 if pendulum_data:
-    dataset = np.load(os.path.join(data_path, 'pendulum_imgs.npy'))
-    dataset = dataset[:, 60:190, 60:190]
+    dataset = np.load(os.path.join(data_path, 'pendulum_v0_imgs.npz'))
+    dataset = dataset['arr_0']
 else:  # fetch_sphere env
     dataset = np.load(os.path.join(data_path, 'push_sphere_v0_imgs.npz'))
     dataset = dataset['arr_0']
