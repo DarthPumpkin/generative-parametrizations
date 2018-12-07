@@ -39,7 +39,7 @@ class RewardFunction:
     @classmethod
     def simplified_push_reward(cls, env: gym.Env):
         self = RewardFunction(env)
-        self._reward_fn = _build_simplified_reward_fn_push_env(env.unwrapped)
+        self._reward_fn = _build_simplified_reward_fn_push_env(coeff=1.0)
         return self
 
 
@@ -109,12 +109,7 @@ def _build_reward_fn_fetch_env(env: FetchEnv):
     return reward_fn
 
 
-def _build_simplified_reward_fn_push_env(env: FetchEnv):
-
-    from gym.envs.robotics import FetchPushEnv
-    assert isinstance(env, FetchPushEnv), 'Environment for this reward function must be of type FetchPushEnv!'
-    assert env.has_object, 'Environment used must have an object to push!'
-    assert env.reward_type == 'dense', 'This reward function is only defined for dense rewards!'
+def _build_simplified_reward_fn_push_env(exp=1.0, coeff=0.0):
 
     # achieved goal is object_pos
     object_pos_idx = np.arange(3, 6)
@@ -138,7 +133,7 @@ def _build_simplified_reward_fn_push_env(env: FetchEnv):
         grp_goal_d = np.linalg.norm(grp_pos - grp_goal_pos, axis=-1)
 
         # total cost is the sum of the distances to the two goals
-        return -(obj_goal_d + grp_goal_d)
+        return -(obj_goal_d + coeff*(grp_goal_d**exp))
 
     return reward_fn
 
