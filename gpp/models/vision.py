@@ -12,7 +12,7 @@ from .lstm_model_tf import LSTM_Model_TF
 
 class VisionModel(BaseModel):
 
-    def __init__(self, vae_model_path: Path, env_model: BaseModel, z_size: int=16, batch_size: int=32, *args, **kwargs):
+    def __init__(self, vae_model_path: Path, env_model: BaseModel=None, z_size: int=16, batch_size: int=32, *args, **kwargs):
         super().__init__(*args, **kwargs)
         vae = ConvVAE(z_size=z_size, batch_size=batch_size, is_training=False, reuse=False, gpu_mode=False)
         vae.load_json(vae_model_path)
@@ -50,10 +50,10 @@ class VaeLstmModel(VisionModel):
 
 class VaeLstmTFModel(VisionModel):
 
-    def __init__(self, vae_model_path: Path, *args, **kwargs):
-        lstm = LSTM_Model_TF()
-        super().__init__(vae_model_path=vae_model_path, env_model=lstm, *args, **kwargs)
-        # self.vae = lstm.model.vae
+    def __init__(self, vae_model_path: Path, l2l_model_path: Path, l2reward_model_path: Path, *args, **kwargs):
+        super().__init__(vae_model_path=vae_model_path, env_model=None, *args, **kwargs)
+        lstm = LSTM_Model_TF(l2l_model_path=l2l_model_path, l2reward_model_path=l2reward_model_path)
+        self.env_model = lstm
 
 
 class VaeMlpModel(VisionModel):

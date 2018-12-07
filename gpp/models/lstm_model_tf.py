@@ -11,16 +11,13 @@ from . import BaseModel
 
 
 class LSTM_Model_TF(BaseModel):
-    def __init__(self):
+
+    def __init__(self, l2l_model_path: Path, l2reward_model_path: Path, window_size=4):
         super().__init__()
 
-        vae_path = './tf_vae/kl2rl1-z16-b250-push_sphere_v0vae-fetch199.json'
-        l2l_modelpath = './out/push_sphere_v1_l2lmodel.hdf5'
-        l2reward_modelpath = './out/l2rewardmodel.h5'
-
-        self.window_size = 4
-        self.model = LSTMModel(vae_path, z_size=16, steps=self.window_size, training=False, l2l_model_path=l2l_modelpath,
-                               l2reward_model_path=l2reward_modelpath)
+        self.window_size = window_size
+        self.model = LSTMModel(steps=self.window_size, training=False, l2l_model_path=l2l_model_path.as_posix(),
+                               l2reward_model_path=l2reward_model_path.as_posix())
 
     @staticmethod
     def load(file_path: Path, device=torch.device("cpu")):
@@ -51,7 +48,7 @@ class LSTM_Model_TF(BaseModel):
 
         start_idx = 0
         for j in range(horizon):
-            # state_action = window[:, start_idx: j] # np.concatenate([d[start_idx: j], actions[i][start_idx: j]], axis=1)
+
             pred_z = self.model.predict_l2l(window)
 
             pred_rw = self.model.predict_l2reward(pred_z)
