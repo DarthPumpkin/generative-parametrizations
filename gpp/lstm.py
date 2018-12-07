@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+
 from gpp.world_models_vae import ConvVAE
 import numpy as np
 from keras import Sequential, Model
@@ -232,12 +234,14 @@ def main():
 
         l2reward_modelpath = f'trained_models/l2rewardmodel-{reward_key}.h5'
 
-        example_train = LSTMModel(vae_path, z_size=16, steps=4, training=True, l2l_model_path=l2l_modelpath,
-                                  l2reward_model_path=l2reward_modelpath, dataset_path=dataset_path,
-                                  dataset_detail_path=dataset_detail_path, reward_key=reward_key)
+        if not Path(l2reward_modelpath).exists():
 
-        # example_train.build_l2l_model()
-        example_train.build_l2reward_model()
+            example_train = LSTMModel(vae_path, z_size=16, steps=4, training=True, l2l_model_path=l2l_modelpath,
+                                      l2reward_model_path=l2reward_modelpath, dataset_path=dataset_path,
+                                      dataset_detail_path=dataset_detail_path, reward_key=reward_key)
+
+            # example_train.build_l2l_model()
+            example_train.build_l2reward_model()
         print("DONE")
 
 
