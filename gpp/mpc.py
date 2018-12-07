@@ -9,7 +9,8 @@ from .models import BaseModel
 class MPC:
 
     def __init__(self, env: gym.Env, model: BaseModel, horizon: int, n_action_sequences: int,
-                 np_random=None, reward_function=None, use_history=False):
+                 np_random=None, reward_function=None, use_history=False, direct_reward=False,
+                 action_period=1):
 
         self.reward_function = reward_function or RewardFunction(env)
 
@@ -21,9 +22,14 @@ class MPC:
         self.n_action_sequences = n_action_sequences
         self.horizon = horizon
         self.model = model
+        self.direct_reward = direct_reward
         self.use_history = use_history
+        self.action_period = action_period
         self.a_history = []
         self.s_history = []
+
+        if action_period > 1 and not use_history:
+            raise ValueError
 
     def forget_history(self):
         self.a_history = []
@@ -49,10 +55,20 @@ class MPC:
             raise NotImplementedError
 
         if self.use_history:
-            all_states = self.model.forward_sim(all_actions, current_state, history=self.history)
-            self.s_history.append(current_state)
+
+            step = len(self.s_history)
+
+            if step == 0 or step % self.action_period == 0:
+                encoded_s, model_out = self.model.forward_sim(all_actions, current_state, history=self.history)
+                self.s_history.append(encoded_s)
+            else:
+                encoded_s = self.model.forward_sim(all_actions, current_state, encoding_only=True)
+                prev_a = self.a_history[-1]
+                self.s_history.append(encoded_s)
+                self.a_history.append(prev_a)
+                return prev_a
         else:
-            all_states = self.model.forward_sim(all_actions, current_state)
+            model_out = self.model.forward_sim(all_actions, current_state)
 
         if hasattr(self.env.unwrapped, 'goal'):
             goal = self.env.unwrapped.goal
@@ -64,15 +80,18 @@ class MPC:
         else:
             dones = None
 
-        rewards = np.zeros(self.n_action_sequences)
+        if self.direct_reward:
+            rewards = model_out.sum(axis=1)
+        else:
+            rewards = np.zeros(self.n_action_sequences)
 
-        # for each timestep
-        for t in range(self.horizon):
-            rewards += self.reward_function(all_states[:, t], goal=goal, actions=all_actions[:, t], dones=dones)
+            # for each timestep
+            for t in range(self.horizon):
+                rewards += self.reward_function(model_out[:, t], goal=goal, actions=all_actions[:, t], dones=dones)
 
         max_reward_i = rewards.argmax()
-        print("Max reward: ", rewards[max_reward_i])
-        print("Init reward: ", self.horizon * self.reward_function(current_state.reshape(1, -1), goal=goal, actions=np.zeros((1, 4))))
+        print("Pred. reward: ", rewards[max_reward_i] / self.horizon)
+        # print("Init reward: ", self.horizon * self.reward_function(current_state.reshape(1, -1), goal=goal, actions=np.zeros((1, 1))))
         best_action = all_actions[max_reward_i, 0]
 
         if self.use_history:

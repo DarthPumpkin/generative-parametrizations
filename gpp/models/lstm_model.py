@@ -19,10 +19,13 @@ class _LstmNetwork(nn.Module):
         self.n_inputs, self.n_hidden, self.n_outputs, self.n_layers = n_inputs, n_hidden, n_outputs, n_layers
         self.lstm = nn.LSTM(n_inputs, n_hidden, num_layers=n_layers, batch_first=True)
 
+        in_state_size = 16
+        self.hidden2next = nn.Linear(n_hidden, in_state_size)
+
         dense_h_units = 32
 
         self.dense_h = nn.Sequential(
-            nn.Linear(n_hidden, dense_h_units),
+            nn.Linear(in_state_size, dense_h_units),
             nn.ReLU()
         )
 
@@ -33,10 +36,11 @@ class _LstmNetwork(nn.Module):
         if hidden is None:
             assert batch_size is not None, 'Batch size must be specified if hidden is not provided'
             hidden = self.init_hidden(batch_size, x.device)
-        output, hidden = self.lstm(x, hidden)
-        output = self.dense_h(output)
+        lstm_out, hidden = self.lstm(x, hidden)
+        next_ = self.hidden2next(lstm_out)
+        output = self.dense_h(next_)
         output = self.hidden2out(output)
-        return output, hidden
+        return next_, output, hidden
 
     def init_hidden(self, batch_size, device):
         return (torch.zeros(self.n_layers, batch_size, self.n_hidden, device=device),
@@ -148,7 +152,7 @@ class LSTM_Model(BaseModel):
                 assert hasattr(y_variable, 'requires_grad')
                 y_variable.requires_grad = False
 
-                output, _ = self.network.forward(x_variable, actual_batch_size)
+                next_, output, _ = self.network.forward(x_variable, actual_batch_size)
                 output = output[:, -1]
 
                 loss = self.loss_function(output, y_variable)
@@ -170,6 +174,7 @@ class LSTM_Model(BaseModel):
                     history: Tuple[List[np.array]] = None, **kwargs):
 
         state_size, = initial_state.shape
+        output_size = self.n_outputs
         n_sequences, horizon, action_size = action_sequences.shape
         history_len = None
         s_history, a_history = None, None
@@ -203,7 +208,7 @@ class LSTM_Model(BaseModel):
                 self._state_scaler.transform(initial_state.reshape(1, -1), copy=False)
 
             self._check_input_sizes(state_size, action_size)
-            outputs = torch.zeros((n_sequences, horizon, state_size))
+            outputs = torch.zeros((n_sequences, horizon, output_size))
             action_sequences = torch.Tensor(action_sequences).to(self.device)
 
             curr_states = torch.Tensor(initial_state).to(self.device)
@@ -226,17 +231,19 @@ class LSTM_Model(BaseModel):
                 for t in range(horizon):
                     window[:, :window_size - 1] = window[:, 1:]
                     window[:, window_size - 1] = torch.cat([curr_states, action_sequences[:, t, :]], dim=1)
-                    out, hidden = self.network.forward(window, hidden=hidden)
-                    curr_states = out[:, -1].squeeze()
-                    outputs[:, t, :] = curr_states
+                    next_, out, hidden = self.network.forward(window, hidden=hidden)
+                    curr_states = next_[:, -1].squeeze()
+                    curr_out = out[:, -1].squeeze()
+                    outputs[:, t, :] = curr_out
             else:
 
                 hidden = self.network.init_hidden(n_sequences, device=self.device)
                 for t in range(horizon):
                     input_ = torch.cat([curr_states, action_sequences[:, t, :]], dim=1)
-                    out, hidden = self.network.forward(input_[:, None], hidden=hidden)
-                    curr_states = out[:, -1].squeeze()
-                    outputs[:, t, :] = curr_states
+                    next_, out, hidden = self.network.forward(input_[:, None], hidden=hidden)
+                    curr_states = next_[:, -1].squeeze()
+                    curr_out = out[:, -1].squeeze()
+                    outputs[:, t, :] = curr_out
 
         outputs = outputs.cpu().numpy()
 

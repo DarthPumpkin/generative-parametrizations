@@ -1,4 +1,5 @@
 from pathlib import Path
+from time import sleep
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -10,7 +11,7 @@ import gym
 
 from gpp.world_models_vae import ConvVAE
 from gpp.models.utilities import get_observations
-from reward_functions import RewardFunction
+from reward_functions import RewardFunction, _build_simplified_reward_fn_push_env
 
 
 def _setup_fetch_sphere_big(env):
@@ -39,6 +40,18 @@ def _push_strategy_v0(env, obs):
     raw_env = env.unwrapped
     gripper_pos = obs[:3]
     object_pos = obs[3:6]
+    delta = object_pos - gripper_pos
+    dir_ = delta / np.linalg.norm(delta)
+    action = (np.r_[delta + dir_*0.5, 0.0]) * 5.0
+    return action.clip(raw_env.action_space.low, raw_env.action_space.high)
+
+
+def _push_strategy_v2(env, obs):
+    raw_env = env.unwrapped
+    table_dist = np.random.uniform(0.03, 0.05)
+    gripper_pos = obs[:3]
+    object_pos = obs[3:6].copy()
+    object_pos[2] += table_dist
     delta = object_pos - gripper_pos
     dir_ = delta / np.linalg.norm(delta)
     action = (np.r_[delta + dir_*0.5, 0.0]) * 5.0
@@ -99,6 +112,26 @@ def _reset_push_sphere_v0(env):
         sphere_color=color_name,
         sphere_mass=mass
     )
+
+
+PUSH_REWARDS_v2 = dict(
+    reward_original=_build_simplified_reward_fn_push_env(exp=1.0, coeff=0.0)
+)
+
+for _coeff in (1/5, 1/2, 1, 2, 5):
+    for _exp in (1/2, 1, 2, 3):
+        key = f'reward_exp{_exp}_coeff{_coeff}'
+        PUSH_REWARDS_v2[key] = _build_simplified_reward_fn_push_env(exp=_exp, coeff=_coeff)
+
+
+def _step_push_sphere_v2(env, env_obs):
+    raw_obs = env_obs['observation']
+    goal = env_obs['desired_goal']
+    res = dict()
+    for rew_name, rew_fn in PUSH_REWARDS_v2.items():
+        rew = rew_fn(raw_obs, goal=goal).item()
+        res[rew_name] = rew
+    return res
 
 
 CONFIGS = dict(
@@ -180,10 +213,25 @@ CONFIGS = dict(
         action_strategy_eps=0.0,
         action_strategy=_random_strategy,
     ),
+    push_sphere_v2=dict(
+        env='FetchPushSphereDense-v1',
+        size=(64, 64),
+        episodes=2000,
+        episode_length=20,
+        rgb_options=dict(camera_id=3),
+        action_strategy_eps=1./4,
+        action_strategy=_push_strategy_v2,
+        env_setup=_setup_fetch_sphere_big_longer,
+        env_reset=_reset_push_sphere_v0,
+        env_step=_step_push_sphere_v2
+    ),
 )
 
 
-def generate(config_name: str, overwrite=False):
+def generate(config_name: str, overwrite=False, test_run=False):
+
+    if test_run:
+        print('******* THIS IS A TEST RUN! *******')
 
     config = CONFIGS[config_name]
     episodes = config.get('episodes', 200)
@@ -192,6 +240,7 @@ def generate(config_name: str, overwrite=False):
     rgb_options = config.get('rgb_options', None)
     env_setup = config.get('env_setup', None)
     env_reset = config.get('env_reset', None)
+    env_step = config.get('env_step', None)
     action_strategy = config.get('action_strategy', None)
     action_strategy_eps = config.get('action_strategy_eps', 1.0)
 
@@ -203,9 +252,6 @@ def generate(config_name: str, overwrite=False):
 
     env = gym.make(config['env'])
     raw_env = env.unwrapped
-
-    reward_fn_original = RewardFunction(env)
-    reward_fn_modified = RewardFunction.simplified_push_reward(env)
 
     render_kwargs = dict(mode='rgb_array')
     if rgb_options is not None:
@@ -234,8 +280,10 @@ def generate(config_name: str, overwrite=False):
 
             raw_obs = get_observations(env)
 
-            reward_original = reward_fn_original(raw_obs, goal=env_obs['desired_goal'])
-            reward_modified = reward_fn_modified(raw_obs, goal=env_obs['desired_goal'])
+            step_info = None
+            if callable(env_step):
+                step_info = env_step(env, env_obs)
+            step_info = step_info or dict()
 
             while True:
                 img = env.render(**render_kwargs)
@@ -253,9 +301,8 @@ def generate(config_name: str, overwrite=False):
                 episode=e,
                 raw_obs=raw_obs,
                 raw_action=action,
-                reward_original=reward_original,
-                reward_modified=reward_modified,
-                **episode_info
+                **episode_info,
+                **step_info
             ))
 
             if sample_action:
@@ -267,11 +314,17 @@ def generate(config_name: str, overwrite=False):
 
             env_obs, _, _, _ = env.step(action)
 
-    images = np.array(images)
-    np.savez_compressed(images_path, images)
+            if test_run:
+                # print(pd.DataFrame([details[-1]]))
+                for v, k in step_info.items():
+                    print(v, k)
 
-    details = pd.DataFrame(details)
-    pd.to_pickle(details, details_path)
+    if not test_run:
+        images = np.array(images)
+        np.savez_compressed(images_path, images)
+
+        details = pd.DataFrame(details)
+        pd.to_pickle(details, details_path)
 
     print('Done.')
 
@@ -403,6 +456,13 @@ def test_images_to_z(config_name: str, vae_model_descr: str, vae_model: Path, **
 
 if __name__ == '__main__':
 
+    generate('push_sphere_v2', test_run=False)
+    check_images('push_sphere_v2', show_imgs=False)
+    images_to_z('push_sphere_v2',
+                'kl2rl1-z16-b250',
+                'tf_vae/kl2rl1-z16-b250-push_sphere_v0vae-fetch199.json',
+                z_size=16, batch_size=32)
+
 
     if False:
         generate('pendulum_v0')
@@ -412,7 +472,7 @@ if __name__ == '__main__':
                     'tf_vae/kl2rl1-z6-b100-kl2rl1-b100-z6-pendulum_v0vae-fetch199.json',
                     z_size=6, batch_size=64)
 
-    if True:
+    if False:
         generate('push_sphere_v1')
         check_images('push_sphere_v1', show_imgs=False)
         images_to_z('push_sphere_v1',

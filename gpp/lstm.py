@@ -11,12 +11,14 @@ np.set_printoptions(suppress=True)
 
 class LSTMModel:
     def __init__(self, vae_path=None, z_size=16, steps=4, training=True,
-                 l2l_model_path=None, l2reward_model_path=None, dataset_path=None, dataset_detail_path=None):
+                 l2l_model_path=None, l2reward_model_path=None, dataset_path=None,
+                 dataset_detail_path=None, reward_key='reward'):
         self.z_size = z_size
         self.steps = steps
         self.vae_path = vae_path
         self.l2l_model_path = l2l_model_path
         self.l2reward_model_path = l2reward_model_path
+        self.reward_key = reward_key
         self.dataset_path = dataset_path
         self.dataset_detail_path = dataset_detail_path
         self.x = self.y_latent = self.latent_predictions = self.rewards = None
@@ -57,7 +59,7 @@ class LSTMModel:
         for i in range(df['episode'].max() + 1):
             ep_df = df[df['episode'] == i]
             action = np.array(ep_df['raw_action'].tolist())
-            reward = np.array(ep_df['reward_modified'].tolist())
+            reward = np.array(ep_df[self.reward_key].tolist())
             rewards.append(reward)
             actions.append(action)
         x = []
@@ -69,7 +71,7 @@ class LSTMModel:
                 state_action = np.concatenate([d[start_idx: j], actions[i][start_idx: j]], axis=1)
                 x.append(state_action)
                 y_latent.append(d[j])
-                y_rewards.append(rewards[i][j+1])
+                y_rewards.append(rewards[i][j])
                 start_idx += 1
         x = np.array(x)
         y_latent = np.array(y_latent)
@@ -86,26 +88,22 @@ class LSTMModel:
         y_train = self.rewards[:samples]
         x_test = self.latent_predictions[samples:]
         y_test = self.rewards[samples:]
-        callbacks = [ReduceLROnPlateau(factor=0.9, patience=6, verbose=1), EarlyStopping(patience=10)]
+        callbacks = [ReduceLROnPlateau(factor=0.7, patience=6, verbose=1), EarlyStopping(patience=10)]
 
         model = Sequential()
-        model.add(Dense(512, activation='relu'))
-        model.add(Dropout(0.2))
-        model.add(Dense(256, activation='relu'))
-        model.add(Dropout(0.2))
         model.add(Dense(128, activation='relu'))
-        model.add(Dropout(0.2))
+        # model.add(Dropout(0.1))
         model.add(Dense(64, activation='relu'))
+        model.add(Dropout(0.1))
+        model.add(Dense(32, activation='relu'))
         model.add(Dense(1, activation='linear'))
 
-        model.compile(loss='mse', optimizer='rmsprop')
+        model.compile(loss='mse', optimizer='adam')
         model.fit(x_train, y_train, batch_size=32, epochs=250, validation_split=0.1, verbose=2, callbacks=callbacks)
         rewards = model.predict(x_test)
         diff = 0
         for i, (actual, pred) in enumerate(zip(rewards, y_test)):
             act = float(actual[0])
-            # act = (act * self.reward_std) + self.reward_avg
-            # pred = (pred * self.reward_std) + self.reward_avg
             if i % 20 == 0:
                 print(f'{np.round(act, 2)} -- {round(pred, 2)}')
             diff += abs(act - pred)
@@ -113,14 +111,16 @@ class LSTMModel:
         save_model(model, self.l2reward_model_path)
 
     def build_l2l_model(self):
+        callbacks = [ReduceLROnPlateau(factor=0.9, patience=6, verbose=1), EarlyStopping(patience=10)]
         model = Sequential()
         model.add(LSTM(128, input_shape=(self.x.shape[-2], self.x.shape[-1]), return_sequences=False))
-        model.add(Dropout(0.1))
+        # model.add(Dropout(0.1))
+        model.add(LSTM(64))
         model.add(Dense(64, activation='relu'))
         model.add(Dense(self.y_latent.shape[-1], activation='linear'))
-        model.compile(loss='mse', optimizer='adam')
-        model.fit(self.x, self.y_latent, batch_size=32, epochs=20,
-                      shuffle=False, validation_split=0.1, verbose=2)
+        model.compile(loss='mse', optimizer='nadam')
+        model.fit(self.x, self.y_latent, batch_size=32, epochs=100,
+                  validation_split=0.1, verbose=2, callbacks=callbacks)
         model.save(self.l2l_model_path)
 
     @staticmethod
@@ -211,18 +211,28 @@ class LSTMModel:
 
 
 """EXAMPLE CODE TO TRAIN MODELS"""
+all_reward_keys = ['reward_exp0.5_coeff0.2', 'reward_exp0.5_coeff0.5',
+                   'reward_exp0.5_coeff1', 'reward_exp0.5_coeff2', 'reward_exp0.5_coeff5',
+                   'reward_exp1_coeff0.2', 'reward_exp1_coeff0.5', 'reward_exp1_coeff1',
+                   'reward_exp1_coeff2', 'reward_exp1_coeff5', 'reward_exp2_coeff0.2',
+                   'reward_exp2_coeff0.5', 'reward_exp2_coeff1', 'reward_exp2_coeff2',
+                   'reward_exp2_coeff5', 'reward_exp3_coeff0.2', 'reward_exp3_coeff0.5',
+                   'reward_exp3_coeff1', 'reward_exp3_coeff2', 'reward_exp3_coeff5',
+                   'reward_original']
+reward_key = 'reward_exp2_coeff1'
+
+dataset_detail_path = '../data/push_sphere_v2_details.pkl'
 vae_path = '../scripts/best_models/carlomodel/kl2rl1-z16-b250-push_sphere_v0vae-fetch199.json'
 l2l_modelpath = 'trained_models/l2lmodel.h5'
-l2reward_modelpath = 'trained_models/l2rewardmodel.h5'
+l2reward_modelpath = f'trained_models/l2rewardmodel-{reward_key}.h5'
 
-dataset_path = '../data/push_sphere_v1_latent_kl2rl1-z16-b250.npz'
-dataset_detail_path = '../data/push_sphere_v1_details.pkl'
+dataset_path = '../data/push_sphere_v2_latent_kl2rl1-z16-b250.npz'
+
 
 example_train = LSTMModel(vae_path, z_size=16, steps=4, training=True, l2l_model_path=l2l_modelpath,
                           l2reward_model_path=l2reward_modelpath, dataset_path=dataset_path,
-                          dataset_detail_path=dataset_detail_path)
+                          dataset_detail_path=dataset_detail_path, reward_key=reward_key)
 
 # example_train.build_l2l_model()
 example_train.build_l2reward_model()
-# example_train.build_l2reward_lstm()
 print("DONE")
