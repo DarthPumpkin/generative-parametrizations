@@ -74,6 +74,7 @@ all_settings.append(TrainSetting(2, 1, 100, 8))
 all_settings.append(TrainSetting(2, 2, 100, 8))
 
 """ TRAIN GOOD MODELS """
+all_settings.append(TrainSetting(2, 1, 1,   8))
 all_settings.append(TrainSetting(2, 1, 10,  8))
 all_settings.append(TrainSetting(2, 1, 50,  8))
 all_settings.append(TrainSetting(2, 1, 100, 8))
@@ -81,6 +82,11 @@ all_settings.append(TrainSetting(2, 1, 150, 8))
 all_settings.append(TrainSetting(2, 1, 200, 8))
 all_settings.append(TrainSetting(2, 1, 250, 8))
 all_settings.append(TrainSetting(2, 1, 300, 8))
+
+""" COMPRESSED6 GOOD MODELS """
+all_settings.append(TrainSetting(2, 1, 50,  6))
+all_settings.append(TrainSetting(2, 1, 100, 6))
+all_settings.append(TrainSetting(2, 1, 150, 6))
 
 """ COMPRESSED GOOD MODELS """
 all_settings.append(TrainSetting(2, 1, 50,  4))
