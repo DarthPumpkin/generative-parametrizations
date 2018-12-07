@@ -20,7 +20,7 @@ class VisionModel(BaseModel):
         self.vae_input_shape = (64, 64, 3)
         self.env_model = env_model
 
-    def forward_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray, **kwargs):
+    def forward_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray, encoding_only=False, **kwargs):
         assert len(initial_state.shape) == 3, 'Initial state must be an image!'
 
         initial_state = resize(initial_state, dsize=(64, 64), interpolation=INTER_AREA)
@@ -29,11 +29,15 @@ class VisionModel(BaseModel):
             initial_state = initial_state.astype(np.float32)
             initial_state /= 255.
 
-        dummy_batch = np.zeros((self.vae.batch_size,) + self.vae_input_shape)
+        dummy_batch = np.zeros((self.vae.batch_size,) + self.vae_input_shape, dtype=np.float32)
         dummy_batch[0] = initial_state
         initial_z = self.vae.encode(dummy_batch)[0]
 
-        return self.env_model.forward_sim(action_sequences, initial_z, **kwargs)
+        if encoding_only:
+            return initial_z
+
+        sim_result = self.env_model.forward_sim(action_sequences, initial_z, **kwargs)
+        return initial_z, sim_result
 
 
 class VaeLstmModel(VisionModel):
@@ -49,6 +53,7 @@ class VaeLstmTFModel(VisionModel):
     def __init__(self, vae_model_path: Path, *args, **kwargs):
         lstm = LSTM_Model_TF()
         super().__init__(vae_model_path=vae_model_path, env_model=lstm, *args, **kwargs)
+        # self.vae = lstm.model.vae
 
 
 class VaeMlpModel(VisionModel):

@@ -16,7 +16,7 @@ class LSTM_Model_TF(BaseModel):
 
         vae_path = './tf_vae/kl2rl1-z16-b250-push_sphere_v0vae-fetch199.json'
         l2l_modelpath = './out/push_sphere_v1_l2lmodel.hdf5'
-        l2reward_modelpath = './out/push_sphere_v1_l2rewardmodel.hdf5'
+        l2reward_modelpath = './out/l2rewardmodel.h5'
 
         self.window_size = 4
         self.model = LSTMModel(vae_path, z_size=16, steps=self.window_size, training=False, l2l_model_path=l2l_modelpath,
@@ -47,16 +47,19 @@ class LSTM_Model_TF(BaseModel):
                 j += 1
 
         window[:, self.window_size - 1, state_size:] = action_sequences[:, 0]
+        output = np.zeros((n_sequences, horizon))
 
         start_idx = 0
-        pred_z = None
-        for j in range(self.window_size, horizon):
-            state_action = window[:, start_idx: j] # np.concatenate([d[start_idx: j], actions[i][start_idx: j]], axis=1)
-            pred_z = self.model.predict_l2l(state_action)
+        for j in range(horizon):
+            # state_action = window[:, start_idx: j] # np.concatenate([d[start_idx: j], actions[i][start_idx: j]], axis=1)
+            pred_z = self.model.predict_l2l(window)
+
+            pred_rw = self.model.predict_l2reward(pred_z)
+            output[:, start_idx] = pred_rw.squeeze()
+
             start_idx += 1
             if start_idx < horizon:
                 window[:, :self.window_size - 1] = window[:, 1:]
                 window[:, self.window_size - 1] = np.concatenate((pred_z, action_sequences[:, start_idx]), axis=1)
 
-        pred_rw = self.model.predict_l2reward(pred_z)
-        return pred_rw
+        return output
