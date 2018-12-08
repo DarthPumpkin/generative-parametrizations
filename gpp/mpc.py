@@ -86,7 +86,10 @@ class MPC:
             dones = None
 
         if self.direct_reward:
-            rewards = model_out.sum(axis=1)
+            if len(model_out.shape) > 1:
+                rewards = model_out.sum(axis=1)
+            else:
+                rewards = model_out
         else:
             rewards = np.zeros(self.n_action_sequences)
 
