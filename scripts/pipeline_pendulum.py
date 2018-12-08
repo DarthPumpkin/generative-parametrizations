@@ -28,8 +28,8 @@ if WINDOW_SIZE == 2:
     l2l_torch_path = Path('./out/pendulum_torch_models/model45-45_l2l-window2.pth')
     l2r_torch_path = Path('./out/pendulum_torch_models/model45-45_l2r-window2.pth')
 elif WINDOW_SIZE == 3:
-    l2l_torch_path = Path('../good_models/pendulum/model45-45_l2l-window3.pth')
-    l2r_torch_path = Path('../good_models/pendulum/model45-45_l2r-window3.pth')
+    l2l_torch_path = Path('../good_models/dynamics/pendulum/model45-45_l2l-window3.pth')
+    l2r_torch_path = Path('../good_models/dynamics/pendulum/model45-45_l2r-window3.pth')
 elif WINDOW_SIZE == 4:
     l2l_torch_path = Path('./out/pendulum_torch_models/model45-45_l2l-window4.pth')
     l2r_torch_path = Path('./out/pendulum_torch_models/model45-45_l2r-window4.pth')
