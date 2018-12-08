@@ -36,9 +36,10 @@ class LSTMModel:
             pass
 
     def __load_vae(self):
-        vae = ConvVAE(z_size=self.z_size, is_training=False, reuse=False, gpu_mode=False)
-        # "../scripts/best_models/carlomodel/kl2rl1-z16-b250-push_sphere_v0vae-fetch199.json"
-        vae.load_json(self.vae_path)
+        vae = None
+        if self.vae_path is not None:
+            vae = ConvVAE(z_size=self.z_size, is_training=False, reuse=False, gpu_mode=False)
+            vae.load_json(self.vae_path)
         return vae
 
     def __load_model(self, model_path) -> Model:
