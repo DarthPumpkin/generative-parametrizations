@@ -67,9 +67,12 @@ def _build_reward_fn_cartpole_env(env: CartPoleEnv):
     return reward_fn
 
 
-def _build_reward_fn_pendulum_env(env: PendulumEnv):
+def _build_reward_fn_pendulum_env(env: PendulumEnv=None):
 
-    max_torque = env.max_torque
+    if env is None:
+        max_torque = 2.0
+    else:
+        max_torque = env.max_torque
 
     def angle_normalize(x):
         return np.fmod(x + np.pi, 2*np.pi) - np.pi
