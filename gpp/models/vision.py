@@ -7,6 +7,7 @@ import numpy as np
 from gpp.world_models_vae import ConvVAE
 from . import BaseModel, LSTM_Model
 from .mlp_model import ComboMlpModel
+from .torch_model import ComboTorchModel
 from .lstm_model_tf import LSTM_Model_TF
 
 
@@ -19,6 +20,7 @@ class VisionModel(BaseModel):
         self.vae = vae
         self.vae_input_shape = (64, 64, 3)
         self.env_model = env_model
+        self.z_filter = None
 
     def forward_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray, encoding_only=False, **kwargs):
         assert len(initial_state.shape) == 3, 'Initial state must be an image!'
@@ -32,6 +34,9 @@ class VisionModel(BaseModel):
         dummy_batch = np.zeros((self.vae.batch_size,) + self.vae_input_shape, dtype=np.float32)
         dummy_batch[0] = initial_state
         initial_z = self.vae.encode(dummy_batch)[0]
+
+        if self.z_filter is not None:
+            initial_z = initial_z[self.z_filter]
 
         if encoding_only:
             return initial_z
@@ -50,9 +55,9 @@ class VaeLstmModel(VisionModel):
 
 class VaeLstmTFModel(VisionModel):
 
-    def __init__(self, vae_model_path: Path, l2l_model_path: Path, l2reward_model_path: Path, *args, **kwargs):
+    def __init__(self, vae_model_path: Path, l2l_model_path: Path, l2reward_model_path: Path, window_size, *args, **kwargs):
         super().__init__(vae_model_path=vae_model_path, env_model=None, *args, **kwargs)
-        lstm = LSTM_Model_TF(l2l_model_path=l2l_model_path, l2reward_model_path=l2reward_model_path)
+        lstm = LSTM_Model_TF(l2l_model_path=l2l_model_path, l2reward_model_path=l2reward_model_path, window_size=window_size)
         self.env_model = lstm
 
 
@@ -62,3 +67,12 @@ class VaeMlpModel(VisionModel):
         torch_device = torch_device or torch.device('cpu')
         combo_mlps = ComboMlpModel(mlp1_path, mlp2_path, device=torch_device)
         super().__init__(vae_model_path=vae_model_path, env_model=combo_mlps, *args, **kwargs)
+
+
+class VaeTorchModel(VisionModel):
+
+    def __init__(self, vae_model_path: Path, l2l_model_path: Path, l2r_model_path: Path, torch_device=None,
+                 window_size=1, *args, **kwargs):
+        torch_device = torch_device or torch.device('cpu')
+        combo_torch_model = ComboTorchModel(l2l_model_path, l2r_model_path, device=torch_device, window_size=window_size)
+        super().__init__(vae_model_path=vae_model_path, env_model=combo_torch_model, *args, **kwargs)
