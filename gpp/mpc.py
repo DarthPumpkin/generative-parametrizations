@@ -39,15 +39,20 @@ class MPC:
     def history(self):
         return self.s_history, self.a_history
 
-    def get_action(self, current_state: np.ndarray):
+    def get_action(self, current_state: np.ndarray, discretized_actions=None):
 
         npr = self.np_random
         action_space = self.env.action_space
         current_state = current_state.copy()
 
         if isinstance(action_space, Box):
-            all_actions = npr.uniform(action_space.low, action_space.high,
-                                      (self.n_action_sequences, self.horizon, action_space.shape[0]))
+            if discretized_actions is not None:
+                all_actions_idx = npr.randint(0, len(discretized_actions),
+                                              (self.n_action_sequences, self.horizon))
+                all_actions = discretized_actions[all_actions_idx].copy()
+            else:
+                all_actions = npr.uniform(action_space.low, action_space.high,
+                                          (self.n_action_sequences, self.horizon, action_space.shape[0]))
         elif isinstance(action_space, Discrete):
             all_actions = npr.randint(0, action_space.n,
                                       (self.n_action_sequences, self.horizon))
