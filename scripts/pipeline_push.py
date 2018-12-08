@@ -19,8 +19,8 @@ VAE_MODEL_PATH = Path('./tf_vae/kl2rl1-z16-b250-push_sphere_v0vae-fetch199.json'
 
 VAE_ARGS = dict(z_size=16, batch_size=32)
 
-MPC_HORIZON = 4
-MPC_SEQUENCES = 5_000
+MPC_HORIZON = 10
+MPC_SEQUENCES = 500
 
 
 def _setup_fetch_sphere_big(env):
@@ -40,6 +40,9 @@ def _setup_fetch_sphere_big_longer(env):
     _setup_fetch_sphere_big(env)
 
 
+DISCRETIZED_ACTIONS = 1.5 * np.c_[np.r_[np.eye(3), -np.eye(3)], np.zeros(6)]
+
+
 def main():
 
     env = gym.make('FetchPushSphereDense-v1')
@@ -50,10 +53,10 @@ def main():
 
     _setup_fetch_sphere_big_longer(env)
 
-    reward_fn = _build_simplified_reward_fn_push_env(coeff=0.0, exp=1.0)
+    reward_fn = _build_simplified_reward_fn_push_env(coeff=1.0, exp=1.0)
 
     model = VaeLstmTFModel(VAE_MODEL_PATH, l2l_model_path=l2l_model_path,
-                           l2reward_model_path=l2reward_model_path, **VAE_ARGS)
+                           l2reward_model_path=l2reward_model_path, window_size=4, **VAE_ARGS)
     controller = MPC(env, model, MPC_HORIZON, MPC_SEQUENCES,
                      np_random, use_history=True, direct_reward=True,
                      action_period=1)
@@ -64,7 +67,7 @@ def main():
         controller.forget_history()
         for s in range(100):
             rgb_obs = env.render(mode='rgb_array', rgb_options=dict(camera_id=3))
-            action = controller.get_action(rgb_obs)
+            action = controller.get_action(rgb_obs, discretized_actions=DISCRETIZED_ACTIONS)
 
             env_obs, rewards, dones, info = env.step(action)
 
