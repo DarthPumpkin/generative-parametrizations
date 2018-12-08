@@ -11,7 +11,7 @@ import gym
 
 from gpp.world_models_vae import ConvVAE
 from gpp.models.utilities import get_observations
-from reward_functions import RewardFunction, _build_simplified_reward_fn_push_env
+from reward_functions import RewardFunction, _build_simplified_reward_fn_push_env, _build_reward_fn_pendulum_env
 
 
 def _setup_fetch_sphere_big(env):
@@ -124,7 +124,7 @@ for _coeff in (1/5, 1/2, 1, 2, 5):
         PUSH_REWARDS_v2[key] = _build_simplified_reward_fn_push_env(exp=_exp, coeff=_coeff)
 
 
-def _step_push_sphere_v2(env, env_obs):
+def _step_push_sphere_v2(env, env_obs, action):
     raw_obs = env_obs['observation']
     goal = env_obs['desired_goal']
     res = dict()
@@ -132,6 +132,16 @@ def _step_push_sphere_v2(env, env_obs):
         rew = rew_fn(raw_obs, goal=goal).item()
         res[rew_name] = rew
     return res
+
+
+PENDULUM_REWARD = _build_reward_fn_pendulum_env()
+
+
+def _step_pendulum_v0(env, env_obs, action):
+    reward_fn = PENDULUM_REWARD
+    return dict(
+        reward=reward_fn(env_obs, actions=action).item()
+    )
 
 
 CONFIGS = dict(
@@ -210,6 +220,7 @@ CONFIGS = dict(
         episodes=500,
         episode_length=20,
         env_reset=_reset_pendulum_var_length,
+        env_step=_step_pendulum_v0,
         action_strategy_eps=0.0,
         action_strategy=_random_strategy,
     ),
@@ -282,7 +293,7 @@ def generate(config_name: str, overwrite=False, test_run=False):
 
             step_info = None
             if callable(env_step):
-                step_info = env_step(env, env_obs)
+                step_info = env_step(env, env_obs, action)
             step_info = step_info or dict()
 
             while True:
@@ -387,6 +398,14 @@ def check_images(config_name: str, show_imgs=False):
     print(f'Dataset contains {len(corrupted_idx)} corrupted image(s).')
 
 
+def z_feature_selection(config_name: str, vae_model_descr: str, selected_idx):
+    z_path = f'../data/{config_name}_latent_{vae_model_descr}.npz'
+    z_sel_path = f'../data/{config_name}_latent_selected_{vae_model_descr}.npz'
+    data = np.load(z_path)['arr_0']
+    selected_data = data[:, :, selected_idx]
+    np.savez_compressed(z_sel_path, selected_data)
+
+
 def images_to_z(config_name: str, vae_model_descr: str, vae_model: Path, **vae_kwargs):
 
     config = CONFIGS[config_name]
@@ -456,17 +475,28 @@ def test_images_to_z(config_name: str, vae_model_descr: str, vae_model: Path, **
 
 if __name__ == '__main__':
 
-    generate('push_sphere_v2', test_run=False)
-    check_images('push_sphere_v2', show_imgs=False)
-    images_to_z('push_sphere_v2',
-                'kl2rl1-z16-b250',
-                'tf_vae/kl2rl1-z16-b250-push_sphere_v0vae-fetch199.json',
-                z_size=16, batch_size=32)
+    images_to_z('pendulum_v0',
+                'kl2rl1-z6-b100-2',
+                'tf_vae/kl2rl1-z6-b100-kl2rl1-b100-z6-pendulum_v0vae-fetch199.json',
+                z_size=6, batch_size=32)
 
+    #z_feature_selection('pendulum_v0', 'kl2rl1-z6-b100', [2, 4, 5])
 
     if False:
-        generate('pendulum_v0')
-        check_images('pendulum_v0', show_imgs=False)
+        generate('push_sphere_v2', test_run=False)
+        check_images('push_sphere_v2', show_imgs=False)
+        images_to_z('push_sphere_v2',
+                    'kl2rl1-z16-b250',
+                    'tf_vae/kl2rl1-z16-b250-push_sphere_v0vae-fetch199.json',
+                    z_size=16, batch_size=32)
+
+    if False:
+        generate('pendulum_v0', overwrite=False)
+        check_images('pendulum_v0', show_imgs=True)
+        images_to_z('pendulum_v0',
+                    'kl2rl1-z6-b100',
+                    'tf_vae/kl2rl1-z6-b100-kl2rl1-b100-z6-pendulum_v0vae-fetch199.json',
+                    z_size=6, batch_size=64)
         test_images_to_z('pendulum_v0',
                     'kl2rl1-z6-b100',
                     'tf_vae/kl2rl1-z6-b100-kl2rl1-b100-z6-pendulum_v0vae-fetch199.json',
