@@ -113,7 +113,7 @@ class ComboTorchModel(BaseModel):
             action_sequences = torch.cat((action_sequences, dummy_as), dim=1)
 
             w_len = window.view(n_sequences, -1).shape[1]
-            flat_window_idx_no_action = [i for i in range(w_len) if i % (self.window_size + action_size) not in range(z_size, z_size + action_size)]
+            flat_window_idx_no_action = [i for i in range(w_len) if i % (z_size + action_size) not in range(z_size, z_size + action_size)]
             flat_window_idx = flat_window_idx_no_action + [*range(w_len - action_size, w_len)]
 
             for t in range(0, horizon):
