@@ -5,7 +5,7 @@ import gym
 import numpy as np
 
 import _gpp
-from gpp.models import MDN_Model
+from gpp.models import MDN_Model, LSTM_Model
 from gpp.dataset_old import EnvDataset
 
 
@@ -24,7 +24,7 @@ def push_strategy(raw_env, obs):
         return raw_env.action_space.sample()
 
 
-def evaluate(model_path: Path, env_id: str, strategy=None):
+def evaluate(model_type, model_path: Path, env_id: str, strategy=None, strategy_period=1, state_filter=None, episodes=None):
 
     if torch.cuda.is_available():
         print("CUDA available, proceeding with GPU...")
@@ -40,12 +40,14 @@ def evaluate(model_path: Path, env_id: str, strategy=None):
         print('Existing model not found.')
         raise FileNotFoundError
 
-    model = MDN_Model.load(model_path, device)
+    model = model_type.load(model_path, device)
 
-    dataset = EnvDataset(env)
-    print('Generating data...')
-    dataset.generate(N_EPISODES, EP_LENGTH, strategy=strategy)
-    episodes = dataset.data
+    if episodes is None:
+        dataset = EnvDataset(env)
+        print('Generating data...')
+        np.random.seed(300)
+        dataset.generate(N_EPISODES, EP_LENGTH, strategy=strategy, strategy_period=strategy_period)
+        episodes = dataset.data
 
     print('Evaluating model...')
     ms_errors = np.zeros((len(episodes), EP_LENGTH))
@@ -57,6 +59,8 @@ def evaluate(model_path: Path, env_id: str, strategy=None):
             next_state = states[j+1]
             pred_state = model.forward_sim(a, init_state)[0, 0]
             err = next_state - pred_state
+            if state_filter is not None:
+                err = err[state_filter]
             mse = np.mean(err**2.0)
             ms_errors[i, j] = mse
 
@@ -66,6 +70,11 @@ def evaluate(model_path: Path, env_id: str, strategy=None):
 
 
 if __name__ == '__main__':
-    #evaluate(Path('./out/fetch_mdn_clamp_6comp_model.pkl'), 'FetchReachDense-v1')
-    evaluate(Path('./out/fetch_mdn_scaled_6comp_model.pkl'), 'FetchReachDense-v1')
-    evaluate(Path('./out/push_sphere_mdn_strategy_model_e0.pkl'), 'FetchPushSphereDense-v1', strategy=push_strategy)
+    #evaluate(MDN_Model, Path('./out/fetch_mdn_clamp_6comp_model.pkl'), 'FetchReachDense-v1')
+    #evaluate(MDN_Model, Path('./out/fetch_mdn_scaled_6comp_model.pkl'), 'FetchReachDense-v1')
+    #evaluate(MDN_Model, Path('./out/reach_mdn_model_e10.pkl'), 'FetchReachDense-v1', strategy=None, state_filter=[0, 1, 2])
+    #evaluate(MDN_Model, Path('./out/reach_mdn_model_e10.pkl'), 'FetchReachDense-v1', strategy=None, state_filter=[0, 1, 2])
+    #evaluate(MDN_Model, Path('./out/reach_mdn_model_e10.pkl'), 'FetchReachDense-v1', strategy=None, state_filter=[0, 1, 2])
+    evaluate(LSTM_Model, Path(f'./out/reach_lstm_model_e20.pkl'), 'FetchReachDense-v1')
+    evaluate(LSTM_Model, Path(f'./out/push_sphere_lstm_strategy_short_model.pkl'), 'FetchPushSphereDense-v1',
+             strategy=push_strategy, state_filter=[3, 4, 5])

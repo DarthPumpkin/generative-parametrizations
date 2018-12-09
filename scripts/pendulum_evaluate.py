@@ -12,7 +12,7 @@ from gym.envs.classic_control import GaussianPendulumEnv
 
 # noinspection PyUnresolvedReferences
 import _gpp
-from gpp.models import MDN_Model, PendulumSim
+from gpp.models import MDN_Model, PendulumSim, MlpModel
 from gpp.models.utilities import get_observations
 from gpp.mpc import MPC
 
@@ -114,6 +114,8 @@ def _evaluation_worker(test_data, model_type, model_path, perfect_knowledge,
         # load model
         if model_type == 'mpc-mdn':
             model = MDN_Model.load(Path(model_path), **model_kwargs)
+        elif model_type == 'mpc-mlp':
+            model = MlpModel.load(Path(model_path), **model_kwargs)
         elif model_type == 'mpc-sim':
             model = PendulumSim(env, **model_kwargs)
         else:
