@@ -12,7 +12,7 @@ from gym.envs.classic_control import GaussianPendulumEnv
 
 # noinspection PyUnresolvedReferences
 import _gpp
-from gpp.models import MDN_Model, PendulumSim, MlpModel
+from gpp.models import MDN_Model, PendulumSim, MlpModel, VaeTorchModel
 from gpp.models.utilities import get_observations
 from gpp.mpc import MPC
 
@@ -52,7 +52,7 @@ def _generate_test_dataset(seed=42, episodes=300) -> pd.DataFrame:
 
 
 def _run_model(env: gym.Env, controller_fun, test_data: pd.DataFrame, episode_length=200,
-               embed_knowledge=False, perfect_knowledge=False):
+               embed_knowledge=False, perfect_knowledge=False, vision=False):
 
     raw_env = env.unwrapped
     assert isinstance(raw_env, GaussianPendulumEnv)
@@ -95,6 +95,8 @@ def _run_model(env: gym.Env, controller_fun, test_data: pd.DataFrame, episode_le
 
         observations = get_observations(raw_env)
         for t in range(episode_length):
+            if vision:
+                observations = env.render(mode='rgb_array')
             action = controller_fun(observations)
             observations, reward, _, _ = env.step(action)
             rewards[i] += reward
@@ -103,25 +105,29 @@ def _run_model(env: gym.Env, controller_fun, test_data: pd.DataFrame, episode_le
 
 
 def _evaluation_worker(test_data, model_type, model_path, perfect_knowledge,
-                       episode_length=200, model_kwargs=None):
+                       episode_length=200, mpc_sequences=2000, model_kwargs=None):
 
     # init environment
     env = gym.make('GaussianPendulum-v0')
     model_kwargs = model_kwargs or dict()
+    vision = False
 
     if model_type.startswith('mpc'):
 
         # load model
         if model_type == 'mpc-mdn':
-            model = MDN_Model.load(Path(model_path), **model_kwargs)
+            model = MDN_Model.load(model_path, **model_kwargs)
         elif model_type == 'mpc-mlp':
-            model = MlpModel.load(Path(model_path), **model_kwargs)
+            model = MlpModel.load(model_path, **model_kwargs)
         elif model_type == 'mpc-sim':
             model = PendulumSim(env, **model_kwargs)
+        elif model_type == 'mpc-vae-mlp':
+            model = VaeTorchModel(model_path, **model_kwargs)
+            vision = True
         else:
             raise NotImplementedError
 
-        mpc = MPC(env, model, horizon=20, n_action_sequences=2000, np_random=None)
+        mpc = MPC(env, model, horizon=20, n_action_sequences=mpc_sequences, np_random=None)
 
         def next_action(obs):
             return mpc.get_action(obs)
@@ -156,7 +162,8 @@ def _evaluation_worker(test_data, model_type, model_path, perfect_knowledge,
         test_data,
         episode_length=episode_length,
         embed_knowledge=perfect_knowledge,
-        perfect_knowledge=perfect_knowledge
+        perfect_knowledge=perfect_knowledge,
+        vision=vision
     )
 
     results = pd.DataFrame(test_data)
@@ -172,7 +179,7 @@ def get_test_dataset_mean(n_episodes=50, seed=42):
 
 
 def run_evaluation(model_type=None, model_path=None, output_suffix="", perfect_knowledge=False, workers=1, seed=42,
-                   store_csv=True, n_episodes=50, episode_length=200, model_kwargs=None):
+                   store_csv=True, n_episodes=50, episode_length=200, mpc_sequences=2000, model_kwargs=None):
 
     if model_type is None:
         raise ValueError
@@ -190,13 +197,13 @@ def run_evaluation(model_type=None, model_path=None, output_suffix="", perfect_k
         split_test_data = list([x.copy() for x in np.array_split(test_data, workers)])
 
         results = parallel(delayed(_evaluation_worker)(
-            x, model_type, model_path, perfect_knowledge, episode_length, model_kwargs
+            x, model_type, model_path, perfect_knowledge, episode_length, mpc_sequences, model_kwargs
         ) for x in split_test_data)
 
         results = pd.concat(results)
     else:
         results = _evaluation_worker(
-            test_data, model_type, model_path, perfect_knowledge, episode_length, model_kwargs
+            test_data, model_type, model_path, perfect_knowledge, episode_length, mpc_sequences, model_kwargs
         )
 
     tock_t = timer()
