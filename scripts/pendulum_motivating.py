@@ -16,7 +16,7 @@ from gpp.models import MDN_Model, MlpModel
 from gpp.dataset_old import EnvDataset
 from evaluate_mdn_mlp import evaluate as evaluate_mse
 from pendulum_evaluate import run_evaluation as evaluate_gym_perf
-from pendulum_evaluate import TEST_MASS_MEAN, TEST_MASS_STDEV
+from pendulum_evaluate import TEST_MASS_MEAN, TEST_MASS_STDEV, get_test_dataset_mean
 
 
 TRAINING_BATCH_SIZE = 16
@@ -30,6 +30,8 @@ MLP_HIDDEN_UNITS = (20,)
 TEST_EPISODES = 50
 TEST_EPISODE_LENGTH = 200
 
+SEED = 42
+
 USE_MLP = True
 
 if USE_MLP:
@@ -38,6 +40,8 @@ if USE_MLP:
 else:
     MODEL_PATH_PREFIX = './out/pendulum_motivating_'
     RESULTS_PATH = Path(f'./pendulum_motivating_results.pkl')
+
+SIM_RESULTS_PATH = './pendulum_motivating_sim_results.pkl'
 
 N_ITERS = 5
 
@@ -51,6 +55,12 @@ SETTINGS = dict(
     blind_fixed_300g_mass=dict(
         mass_stdev=0.0,
         mass_mean=0.300,
+        embed_knowledge=False,
+        perfect_knowledge=False
+    ),
+    blind_fixed_ds_mean_mass=dict(
+        mass_stdev=0.0,
+        mass_mean=0.675,
         embed_knowledge=False,
         perfect_knowledge=False
     ),
@@ -104,10 +114,10 @@ def train(model_path: Path, env: gym.Env, device=torch.device('cpu')):
     return losses
 
 
-def main():
+def main(overwrite_data=False):
 
     prev_df = None
-    if RESULTS_PATH.exists():
+    if RESULTS_PATH.exists() and not overwrite_data:
         prev_df = pd.read_pickle(RESULTS_PATH)
 
     if torch.cuda.is_available():
@@ -145,7 +155,7 @@ def main():
 
         print('==> Evaluating performance on environment...')
         perf_results = evaluate_gym_perf(model_type_str, model_path=path, perfect_knowledge=perfect_knowledge,
-                                         workers=7, seed=42, store_csv=False, n_episodes=TEST_EPISODES,
+                                         workers=7, seed=SEED, store_csv=False, n_episodes=TEST_EPISODES,
                                          episode_length=TEST_EPISODE_LENGTH, model_kwargs=dict(device=device))
 
         rewards = np.array(perf_results['rewards'])
@@ -156,8 +166,7 @@ def main():
             iteration=i,
             losses=losses,
             test_mse=mse,
-            test_reward_mean=rewards.mean(),
-            test_reward_stdev=rewards.std(),
+            test_reward=rewards,
             masses=masses
         ))
 
@@ -172,7 +181,12 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
 
-    df = pd.read_pickle(RESULTS_PATH)
-    print()
+    # around 650g
+    # ds_mean = get_test_dataset_mean(TEST_EPISODES, SEED)
+
+    sim_results = evaluate_gym_perf(model_type='mpc-sim', seed=SEED, workers=7, store_csv=False,
+                                    n_episodes=TEST_EPISODES, episode_length=TEST_EPISODE_LENGTH)
+    sim_results.to_pickle(SIM_RESULTS_PATH)
+
+    main(overwrite_data=False)

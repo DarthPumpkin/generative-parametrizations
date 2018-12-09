@@ -166,6 +166,11 @@ def _evaluation_worker(test_data, model_type, model_path, perfect_knowledge,
     return results
 
 
+def get_test_dataset_mean(n_episodes=50, seed=42):
+    test_data = _generate_test_dataset(episodes=n_episodes, seed=seed)
+    return test_data['sampled_mass'].mean()
+
+
 def run_evaluation(model_type=None, model_path=None, output_suffix="", perfect_knowledge=False, workers=1, seed=42,
                    store_csv=True, n_episodes=50, episode_length=200, model_kwargs=None):
 
