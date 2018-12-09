@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     sim.model.site_rgba[object_site_i] = (1.0, 1.0, 0.0, 1.0)
 
-    sim.model.body_mass[object_body_i] = 50
+    sim.model.body_mass[object_body_i] = 1#50
 
     object_geom_i = np.where(sim.model.geom_bodyid == object_body_i)[0][0]
 
@@ -48,12 +48,15 @@ if __name__ == '__main__':
         observation = env.reset()
         #action = env.action_space.sample()
         go_to_ball = np.random.uniform() < 3/4
+        table_dist = np.random.uniform(0.03, 0.05)
         if not go_to_ball:
             action = env.action_space.sample()
         for i in range(16):
             if go_to_ball:
                 gripper_pos = observation['observation'][:3]
                 object_pos = observation['observation'][3:6]
+
+                object_pos[2] += table_dist
                 delta = object_pos - gripper_pos
                 dir_ = delta / np.linalg.norm(delta)
                 action = (np.r_[delta + dir_*0.5, 0.0]) * 5.0

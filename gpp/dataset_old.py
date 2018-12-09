@@ -42,7 +42,7 @@ class EnvDataset(Dataset):
             return 0
         return self.data[0][0][0].shape
 
-    def generate(self, episodes: int, episode_length: int, strategy=None):
+    def generate(self, episodes: int, episode_length: int, strategy=None, strategy_period=1):
         env, raw_env = self.env, self._raw_env
         observation_space = get_observation_space(env)
 
@@ -58,7 +58,8 @@ class EnvDataset(Dataset):
             states = np.zeros((episode_length + 1,) + observation_space.shape)
             states[0] = obs
             for s in range(episode_length):
-                a = strategy(raw_env, obs)
+                if s % strategy_period == 0:
+                    a = strategy(raw_env, obs)
                 _, rewards, dones, info = env.step(a)
                 obs = get_observations(env)
                 states[s + 1] = obs

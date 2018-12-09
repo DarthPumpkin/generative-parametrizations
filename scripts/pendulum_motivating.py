@@ -21,7 +21,7 @@ from pendulum_evaluate import TEST_MASS_MEAN, TEST_MASS_STDEV, get_test_dataset_
 
 TRAINING_BATCH_SIZE = 16
 TRAINING_EPOCHS = 20
-TRAINING_EPISODES = 800
+TRAINING_EPISODES = 800 * 4
 TRAINING_EPISODE_LENGTH = 50
 
 MDN_COMPONENTS = 5
@@ -36,7 +36,7 @@ USE_MLP = True
 
 if USE_MLP:
     MODEL_PATH_PREFIX = './out/pendulum_motivating_mlp_'
-    RESULTS_PATH = Path(f'./pendulum_motivating_mlp_results.pkl')
+    RESULTS_PATH = Path(f'./pendulum_motivating_mlp_results_extra_tdata.pkl')
 else:
     MODEL_PATH_PREFIX = './out/pendulum_motivating_'
     RESULTS_PATH = Path(f'./pendulum_motivating_results.pkl')
@@ -185,8 +185,7 @@ if __name__ == '__main__':
     # around 650g
     # ds_mean = get_test_dataset_mean(TEST_EPISODES, SEED)
 
-    sim_results = evaluate_gym_perf(model_type='mpc-sim', seed=SEED, workers=7, store_csv=False,
-                                    n_episodes=TEST_EPISODES, episode_length=TEST_EPISODE_LENGTH)
-    sim_results.to_pickle(SIM_RESULTS_PATH)
+    # sim_results = evaluate_gym_perf(model_type='mpc-sim', seed=SEED, workers=7, store_csv=False, n_episodes=TEST_EPISODES, episode_length=TEST_EPISODE_LENGTH)
+    # sim_results.to_pickle(SIM_RESULTS_PATH)
 
     main(overwrite_data=False)

@@ -98,9 +98,10 @@ class MPC:
                 rewards += self.reward_function(model_out[:, t], goal=goal, actions=all_actions[:, t], dones=dones)
 
         max_reward_i = rewards.argmax()
-        print("Pred. reward: ", rewards[max_reward_i] / self.horizon)
-        # print("Init reward: ", self.horizon * self.reward_function(current_state.reshape(1, -1), goal=goal, actions=np.zeros((1, 1))))
         best_action = all_actions[max_reward_i, 0]
+        # print("Pred. reward: ", rewards[max_reward_i] / self.horizon)
+        # print("Init reward: ", self.horizon * self.reward_function(current_state.reshape(1, -1), goal=goal, actions=np.zeros((1, 1))))
+
 
         if self.use_history:
             self.a_history.append(best_action.copy())
