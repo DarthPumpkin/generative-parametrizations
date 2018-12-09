@@ -13,14 +13,14 @@ from .lstm_model_tf import LSTM_Model_TF
 
 class VisionModel(BaseModel):
 
-    def __init__(self, vae_model_path: Path, env_model: BaseModel=None, z_size: int=16, batch_size: int=32, *args, **kwargs):
+    def __init__(self, vae_model_path: Path, env_model: BaseModel=None, z_filter=None, z_size: int=16, batch_size: int=32, *args, **kwargs):
         super().__init__(*args, **kwargs)
         vae = ConvVAE(z_size=z_size, batch_size=batch_size, is_training=False, reuse=False, gpu_mode=False)
         vae.load_json(vae_model_path)
         self.vae = vae
         self.vae_input_shape = (64, 64, 3)
         self.env_model = env_model
-        self.z_filter = None
+        self.z_filter = z_filter
 
     def forward_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray, encoding_only=False, **kwargs):
         assert len(initial_state.shape) == 3, 'Initial state must be an image!'
@@ -72,7 +72,7 @@ class VaeMlpModel(VisionModel):
 class VaeTorchModel(VisionModel):
 
     def __init__(self, vae_model_path: Path, l2l_model_path: Path, l2r_model_path: Path, torch_device=None,
-                 window_size=1, *args, **kwargs):
+                 window_size=1, z_filter=None, *args, **kwargs):
         torch_device = torch_device or torch.device('cpu')
         combo_torch_model = ComboTorchModel(l2l_model_path, l2r_model_path, device=torch_device, window_size=window_size)
-        super().__init__(vae_model_path=vae_model_path, env_model=combo_torch_model, *args, **kwargs)
+        super().__init__(vae_model_path=vae_model_path, env_model=combo_torch_model, z_filter=z_filter, *args, **kwargs)
