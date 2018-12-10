@@ -1,6 +1,7 @@
 from pathlib import Path
 from time import sleep
 
+import cv2
 import pandas as pd
 from tqdm import tqdm
 import itertools as it
@@ -84,7 +85,7 @@ def visual_test():
     env, model, controller = init()
     raw_env = env.unwrapped
 
-    set_mass(raw_env, 0.2, 1.4)
+    set_mass(raw_env, 1.0, 1.0)
 
     for e in range(2000):
         env.reset()
@@ -143,7 +144,44 @@ def performance_test(seed=42, output_path=None, overwrite_data=False):
     return results_df
 
 
+def demo(dream_len=10):
+
+    dream_len = min(dream_len, MPC_HORIZON)
+
+    env, model, controller = init()
+    raw_env = env.unwrapped
+
+    set_mass(raw_env, 1.0, 1.0)
+    interrupt = False
+
+    while not interrupt:
+        env.reset()
+        controller.forget_history()
+        for s in range(200):
+            rgb_obs = env.render(mode='rgb_array')
+            action, dream = controller.get_action(rgb_obs, return_dream=True)
+
+            dreamed_imgs = model.vae_decode(dream[:dream_len])
+            for i, img in enumerate(dreamed_imgs):
+                img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                img = cv2.resize(img, dsize=(500, 500), interpolation=cv2.INTER_LINEAR)
+                cv2.imshow('frame', img)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    interrupt = True
+                    break
+                sleep(0.02)
+
+            reward = env.step(action)[1]
+            print('Reward: ', reward)
+
+            if interrupt:
+                break
+        if interrupt:
+            break
+
+    cv2.destroyAllWindows()
+
+
 if __name__ == '__main__':
-    # performance_test(output_path='./pipeline_pendulum_exp1.pkl')
-    df = pd.read_pickle('./pipeline_pendulum_exp1.pkl')
-    print()
+    # visual_test()
+    demo()

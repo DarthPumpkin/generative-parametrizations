@@ -30,6 +30,9 @@ class ComboTorchModel(BaseModel):
         if self.window_size > 1:
             return self.forward_sim_windowed(action_sequences, initial_state, **kwargs)
 
+        if kwargs.get('return_dream', False):
+            raise NotImplementedError
+
         with torch.no_grad():
             n_sequences, horizon, action_size = action_sequences.shape
             z_size = initial_state.shape[0]
@@ -65,7 +68,7 @@ class ComboTorchModel(BaseModel):
             return rewards.cpu().numpy()
 
     def forward_sim_windowed(self, action_sequences: np.ndarray, initial_state: np.ndarray, history=None,
-                             flatten_window=True, **kwargs):
+                             flatten_window=True, return_dream=False, **kwargs):
 
         with torch.no_grad():
             n_sequences, horizon, action_size = action_sequences.shape
@@ -108,6 +111,10 @@ class ComboTorchModel(BaseModel):
             action_sequences = torch.Tensor(action_sequences).to(self._device)
             window = torch.Tensor(window).to(self._device)
 
+            dream = None
+            if return_dream:
+                dream = torch.zeros((n_sequences, horizon, z_size), device=self._device)
+
             # extend action_sequences with dummy action sequence for t = horizon-1
             dummy_as = torch.zeros((n_sequences, 1, 1)).to(self._device)
             action_sequences = torch.cat((action_sequences, dummy_as), dim=1)
@@ -116,7 +123,7 @@ class ComboTorchModel(BaseModel):
             flat_window_idx_no_action = [i for i in range(w_len) if i % (z_size + action_size) not in range(z_size, z_size + action_size)]
             flat_window_idx = flat_window_idx_no_action + [*range(w_len - action_size, w_len)]
 
-            for t in range(0, horizon):
+            for t in range(horizon):
 
                 if flatten_window:
                     l2l_window = window.view(n_sequences, -1)[:, flat_window_idx]
@@ -124,6 +131,9 @@ class ComboTorchModel(BaseModel):
                     l2l_window = window
 
                 curr_z = self.l2l.forward(l2l_window)
+
+                if return_dream:
+                    dream[:, t] = curr_z
 
                 window[:, :self.window_size - 1] = window[:, 1:]
                 window[:, self.window_size - 1] = torch.cat((curr_z, action_sequences[:, t+1]), dim=1)
@@ -139,5 +149,12 @@ class ComboTorchModel(BaseModel):
                 if self._r_scaler is not None:
                     self._r_scaler.inverse_transform(rew_np, copy=False)
                 rewards += rew_np.squeeze()
+
+            if return_dream:
+                dream = dream.cpu().numpy()
+                if self._z_scaler is not None:
+                    reshaped = dream.reshape(n_sequences * horizon, -1)
+                    self._z_scaler.inverse_transform(reshaped, copy=False)
+                return rewards, dream
 
             return rewards

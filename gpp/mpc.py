@@ -39,7 +39,7 @@ class MPC:
     def history(self):
         return self.s_history, self.a_history
 
-    def get_action(self, current_state: np.ndarray, discretized_actions=None):
+    def get_action(self, current_state: np.ndarray, discretized_actions=None, return_dream=False):
 
         npr = self.np_random
         action_space = self.env.action_space
@@ -64,16 +64,19 @@ class MPC:
             step = len(self.s_history)
 
             if step == 0 or step % self.action_period == 0:
-                encoded_s, model_out = self.model.forward_sim(all_actions, current_state, history=self.history)
+                encoded_s, model_out = self.model.forward_sim(all_actions, current_state,
+                                                              history=self.history, return_dream=return_dream)
                 self.s_history.append(encoded_s)
             else:
+                if return_dream:
+                    raise NotImplementedError
                 encoded_s = self.model.forward_sim(all_actions, current_state, encoding_only=True)
                 prev_a = self.a_history[-1]
                 self.s_history.append(encoded_s)
                 self.a_history.append(prev_a)
                 return prev_a
         else:
-            model_out = self.model.forward_sim(all_actions, current_state)
+            model_out = self.model.forward_sim(all_actions, current_state, return_dream=return_dream)
 
         if hasattr(self.env.unwrapped, 'goal'):
             goal = self.env.unwrapped.goal
@@ -84,6 +87,11 @@ class MPC:
             dones = np.zeros(self.n_action_sequences, dtype=np.bool)
         else:
             dones = None
+
+        if return_dream:
+            model_out, dream = model_out
+        else:
+            dream = None
 
         if self.direct_reward:
             if len(model_out.shape) > 1:
@@ -102,8 +110,11 @@ class MPC:
         # print("Pred. reward: ", rewards[max_reward_i] / self.horizon)
         # print("Init reward: ", self.horizon * self.reward_function(current_state.reshape(1, -1), goal=goal, actions=np.zeros((1, 1))))
 
-
         if self.use_history:
             self.a_history.append(best_action.copy())
 
-        return best_action
+        if return_dream:
+            best_dream = dream[max_reward_i]
+            return best_action, best_dream
+        else:
+            return best_action

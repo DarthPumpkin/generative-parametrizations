@@ -22,6 +22,25 @@ class VisionModel(BaseModel):
         self.env_model = env_model
         self.z_filter = z_filter
 
+    def vae_decode(self, latent_states: np.ndarray):
+
+        if len(latent_states.shape) == 3:
+            latent_states = latent_states[None]
+
+        n_states = len(latent_states)
+        if n_states > self.vae.batch_size:
+            raise NotImplementedError
+
+        z_filter = np.arange(self.vae.z_size)
+        if self.z_filter is not None:
+            z_filter = self.z_filter
+
+        dummy_batch = np.zeros((self.vae.batch_size, self.vae.z_size), dtype=np.float32)
+        dummy_batch[:n_states, z_filter] = latent_states
+
+        decoded = self.vae.decode(dummy_batch)[:n_states]
+        return decoded
+
     def forward_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray, encoding_only=False, **kwargs):
         assert len(initial_state.shape) == 3, 'Initial state must be an image!'
 
