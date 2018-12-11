@@ -100,13 +100,14 @@ def visual_test():
 
 def performance_test(seed=42, output_path=None, overwrite_data=False):
 
+    prev_df = None
     if Path(output_path).exists() and not overwrite_data:
-        return
+        prev_df = pd.read_pickle(output_path)
 
     env, model, controller = init()
     raw_env = env.unwrapped
 
-    repetitions = 10
+    repetitions = 100
     ep_length = 200
     n_masses = 5
 
@@ -116,6 +117,12 @@ def performance_test(seed=42, output_path=None, overwrite_data=False):
     results_df = None
 
     for real_mass, visual_mass, rep in tqdm(it.product(masses, masses, range(repetitions)), total=tot_iters):
+
+        if prev_df[(prev_df['real_mass'] == real_mass) &
+                   (prev_df['visual_mass'] == visual_mass) &
+                   (prev_df['repetition'] == rep)].size > 0:
+            print(f'Config. rm {real_mass}, vm {visual_mass}, rep {rep} found. Skipping...')
+            continue
 
         env.seed(seed + rep)
         controller.np_random = raw_env.np_random
@@ -138,13 +145,15 @@ def performance_test(seed=42, output_path=None, overwrite_data=False):
             ))
 
         results_df = pd.DataFrame(results)
+        if prev_df is not None:
+            results_df = pd.concat((prev_df, results_df))
         if output_path is not None:
             results_df.to_pickle(output_path)
 
     return results_df
 
 
-def demo(dream_len=10):
+def demo(dream_len=20):
 
     dream_len = min(dream_len, MPC_HORIZON)
 
@@ -183,5 +192,6 @@ def demo(dream_len=10):
 
 
 if __name__ == '__main__':
+    performance_test(output_path='./pipeline_pendulum_exp1_100reps.pkl')
     # visual_test()
-    demo()
+    # demo()
