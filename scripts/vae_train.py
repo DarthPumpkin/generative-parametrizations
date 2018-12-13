@@ -61,38 +61,38 @@ all_settings = []
 
 """ ____________ PENDULUM MODELS ______________"""
 """ TRAIN KNOWN BAD MODELS"""
-all_settings.append(TrainSetting(0, 0, 0, 8))
-all_settings.append(TrainSetting(0, 1, 0, 8))
-all_settings.append(TrainSetting(0, 2, 0, 8))
-
-all_settings.append(TrainSetting(1, 0, 100, 8))
-all_settings.append(TrainSetting(1, 1, 100, 8))
-all_settings.append(TrainSetting(1, 2, 100, 8))
-
-all_settings.append(TrainSetting(2, 0, 100, 8))
-all_settings.append(TrainSetting(2, 1, 100, 8))
-all_settings.append(TrainSetting(2, 2, 100, 8))
+# all_settings.append(TrainSetting(0, 0, 0, 8))
+# all_settings.append(TrainSetting(0, 1, 0, 8))
+# all_settings.append(TrainSetting(0, 2, 0, 8))
+#
+# all_settings.append(TrainSetting(1, 0, 100, 8))
+# all_settings.append(TrainSetting(1, 1, 100, 8))
+# all_settings.append(TrainSetting(1, 2, 100, 8))
+#
+# all_settings.append(TrainSetting(2, 0, 100, 8))
+# all_settings.append(TrainSetting(2, 1, 100, 8))
+# all_settings.append(TrainSetting(2, 2, 100, 8))
 
 """ TRAIN GOOD MODELS """
-all_settings.append(TrainSetting(2, 1, 1,   8))
-all_settings.append(TrainSetting(2, 1, 10,  8))
-all_settings.append(TrainSetting(2, 1, 50,  8))
-all_settings.append(TrainSetting(2, 1, 100, 8))
-all_settings.append(TrainSetting(2, 1, 150, 8))
-all_settings.append(TrainSetting(2, 1, 200, 8))
-all_settings.append(TrainSetting(2, 1, 250, 8))
-all_settings.append(TrainSetting(2, 1, 300, 8))
+# all_settings.append(TrainSetting(2, 1, 1,   8))
+# all_settings.append(TrainSetting(2, 1, 10,  8))
+# all_settings.append(TrainSetting(2, 1, 50,  8))
+# all_settings.append(TrainSetting(2, 1, 100, 8))
+# all_settings.append(TrainSetting(2, 1, 150, 8))
+# all_settings.append(TrainSetting(2, 1, 200, 8))
+# all_settings.append(TrainSetting(2, 1, 250, 8))
+# all_settings.append(TrainSetting(2, 1, 300, 8))
 
 """ COMPRESSED6 GOOD MODELS """
-all_settings.append(TrainSetting(2, 1, 50,  6))
+# all_settings.append(TrainSetting(2, 1, 50,  6))
 all_settings.append(TrainSetting(2, 1, 100, 6))
-all_settings.append(TrainSetting(2, 1, 150, 6))
+# all_settings.append(TrainSetting(2, 1, 150, 6))
 
 """ COMPRESSED GOOD MODELS """
-all_settings.append(TrainSetting(2, 1, 50,  4))
-all_settings.append(TrainSetting(2, 1, 100, 4))
-all_settings.append(TrainSetting(2, 1, 150, 4))
-
+# all_settings.append(TrainSetting(2, 1, 50,  4))
+# all_settings.append(TrainSetting(2, 1, 100, 4))
+# all_settings.append(TrainSetting(2, 1, 150, 4))
+#
 
 
 
@@ -201,27 +201,27 @@ for setting in all_settings:
         #                     " derivative: ", loss_grads_list[-1],
         #                     " last beta: ", disentanglement)
         # finished, final model:
-        if epoch == NUM_EPOCH-1:  # or epoch % 50 == 0:
-            vae.save_json("tf_vae/{}vae-fetch{}.json".format(setting.name, epoch))
-            plt.plot(train_loss_list, label="total loss")
-            plt.plot(r_loss_list, label="rec loss")
-            plt.plot(kl_loss_list, label="kl loss")
-            plt.legend()
-            plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_history.pdf', format="pdf")
-            plt.close("all")
-            plt.plot(loss_grads_list)
-            plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_gradient.pdf', format="pdf")
+        if epoch == NUM_EPOCH-1 or epoch % 2 == 0:
+            # vae.save_json("tf_vae/{}vae-fetch{}.json".format(setting.name, epoch))
+            # plt.plot(train_loss_list, label="total loss")
+            # plt.plot(r_loss_list, label="rec loss")
+            # plt.plot(kl_loss_list, label="kl loss")
+            # plt.legend()
+            # plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_history.pdf', format="pdf")
+            # plt.close("all")
+            # plt.plot(loss_grads_list)
+            # plt.savefig(f'{IMG_OUTPUT_DIR}/train_loss_gradient.pdf', format="pdf")
 
             batch_z = vae.encode(x_test[:batch_size])
             reconstruct = vae.decode(batch_z)
             reconstruct = (reconstruct * 255).astype(np.uint8)
-            im2print = 20
+            im2print = 1
 
             plt.figure(figsize=(5 * 2, 5 * im2print))
-            plt.suptitle(setting.name)
+            # plt.suptitle(setting.name)
             for i in range(im2print):
                 plt.subplot(im2print, 2, 1+2*i)
-                original = x_test[i].clip(0, 1)
+                original = x_test[30].clip(0, 1)
                 plt.imshow(original)
                 plt.axis("off")
 
