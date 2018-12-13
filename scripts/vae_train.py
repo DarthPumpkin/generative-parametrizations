@@ -216,10 +216,10 @@ for setting in all_settings:
             batch_z = vae.encode(x_test[:batch_size])
             reconstruct = vae.decode(batch_z)
             reconstruct = (reconstruct * 255).astype(np.uint8)
-            im2print = 20
+            im2print = 1
 
             plt.figure(figsize=(5 * 2, 5 * im2print))
-            plt.suptitle(setting.name)
+            # plt.suptitle(setting.name)
             for i in range(im2print):
                 plt.subplot(im2print, 2, 1+2*i)
                 original = x_test[i].clip(0, 1)
