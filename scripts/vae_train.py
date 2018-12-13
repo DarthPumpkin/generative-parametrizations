@@ -201,7 +201,7 @@ for setting in all_settings:
         #                     " derivative: ", loss_grads_list[-1],
         #                     " last beta: ", disentanglement)
         # finished, final model:
-        if epoch == NUM_EPOCH-1 or epoch % 2 == 0:
+        if epoch == NUM_EPOCH-1 or epoch % 1 == 0:
             # vae.save_json("tf_vae/{}vae-fetch{}.json".format(setting.name, epoch))
             # plt.plot(train_loss_list, label="total loss")
             # plt.plot(r_loss_list, label="rec loss")
