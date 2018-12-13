@@ -127,7 +127,7 @@ else:  # fetch_sphere env
     dataset = np.load(os.path.join(data_path, 'push_sphere_v0_imgs.npz'))
     dataset = dataset['arr_0']
 
-#np.random.shuffle(dataset)
+np.random.shuffle(dataset)
 dataset = dataset / 255.
 new_data = []
 for i, d in enumerate(dataset):
