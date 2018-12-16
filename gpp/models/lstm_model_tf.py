@@ -6,7 +6,7 @@ from typing import Sequence, Tuple, List
 import numpy as np
 import torch
 
-from lstm import LSTMModel
+from ..lstm import LSTMModel
 from . import BaseModel
 
 
