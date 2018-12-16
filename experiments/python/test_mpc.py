@@ -8,17 +8,17 @@ from gpp.models import PendulumSim, CartPoleSim
 
 if __name__ == '__main__':
 
-    # env = gym.make('Pendulum-v0')
-    env = gym.make('CartPole-v0')
+    env = gym.make('Pendulum-v0')
+    # env = gym.make('CartPole-v0')
 
     raw_env = env.unwrapped
     raw_env.seed(42)
     np_random = raw_env.np_random
 
-    # model = PendulumSim(env, np_random=np_random)
-    model = CartPoleSim(env, np_random=np_random)
+    model = PendulumSim(env, np_random=np_random)
+    # model = CartPoleSim(env, np_random=np_random)
 
-    horizon = 100
+    horizon = 8
     n_sequences = 2000
     controller = MPC(env, model, horizon, n_sequences, np_random)
 
