@@ -3,6 +3,38 @@ from collections import OrderedDict
 import gym
 import gym.spaces
 import numpy as np
+import torch
+from sklearn.preprocessing import StandardScaler
+
+
+def scaler_transform_torch(scaler: StandardScaler, x: torch.Tensor, copy=True):
+    if not copy:
+        raise NotImplementedError
+    orig_shape = x.shape
+    if len(orig_shape) == 3:
+        x = x.view((orig_shape[0] * orig_shape[1], -1))
+    elif len(orig_shape) != 2:
+        raise NotImplementedError
+    if scaler.with_mean:
+        x = x - torch.from_numpy(scaler.mean_).type(x.dtype).to(x.device)
+    if scaler.with_std:
+        x = x / torch.from_numpy(scaler.scale_).type(x.dtype).to(x.device)
+    return x.view(orig_shape)
+
+
+def scaler_inv_transform_torch(scaler: StandardScaler, x: torch.Tensor, copy=True):
+    if not copy:
+        raise NotImplementedError
+    orig_shape = x.shape
+    if len(orig_shape) == 3:
+        x = x.view((orig_shape[0] * orig_shape[1], -1))
+    elif len(orig_shape) != 2:
+        raise NotImplementedError
+    if scaler.with_mean:
+        x = x + torch.from_numpy(scaler.mean_).type(x.dtype).to(x.device)
+    if scaler.with_std:
+        x = x * torch.from_numpy(scaler.scale_).type(x.dtype).to(x.device)
+    return x.view(orig_shape)
 
 
 def get_observation_space(env: gym.Env):

@@ -3,6 +3,7 @@ import torch
 from sklearn.preprocessing import StandardScaler
 
 from . import BaseModel
+from .utilities import scaler_inv_transform_torch, scaler_transform_torch
 
 
 class ComboTorchModel(BaseModel):
@@ -26,6 +27,9 @@ class ComboTorchModel(BaseModel):
             self._r_scaler = self.l2r.r_scaler # type: StandardScaler
 
     def forward_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray, **kwargs):
+
+        if kwargs.get('mpc_by_sgd', False):
+            return self.forward_sim_windowed_torch(action_sequences, initial_state, **kwargs)
 
         if self.window_size > 1:
             return self.forward_sim_windowed(action_sequences, initial_state, **kwargs)
@@ -158,3 +162,94 @@ class ComboTorchModel(BaseModel):
                 return rewards, dream
 
             return rewards
+
+    def forward_sim_windowed_torch(self, action_sequences: torch.Tensor, initial_state, history=None,
+                                   flatten_window=True, return_dream=False, **kwargs):
+        """Used for Model Predictive Control by SGD"""
+
+        n_sequences, horizon, action_size = action_sequences.shape
+        z_size = initial_state.shape[0]
+
+        if self._a_scaler is not None:
+            # scale input actions
+            action_sequences = scaler_transform_torch(self._a_scaler, action_sequences)
+
+        if self._z_scaler is not None:
+            # scale initial state
+            initial_state = initial_state.copy()
+            self._z_scaler.transform(initial_state.reshape(1, -1), copy=False)
+
+        window0 = np.concatenate((initial_state, np.zeros(action_size)))
+        window = np.tile(window0, (n_sequences, self.window_size, 1))
+
+        if history:
+            s_history, a_history = history
+            j = 0
+            for i in range(1, self.window_size):
+                if j >= len(s_history):
+                    break
+                past_s, past_a = s_history[-i].copy(), a_history[-i].copy()
+
+                if self._a_scaler is not None:
+                    self._a_scaler.transform(past_a.reshape(1, -1), copy=False)
+                if self._z_scaler is not None:
+                    self._z_scaler.transform(past_s.reshape(1, -1), copy=False)
+
+                foo = np.concatenate((past_s, past_a))
+                foo = np.tile(foo, (n_sequences, 1))
+                window[:, self.window_size-i-1, :] = foo
+                j += 1
+
+        rewards = torch.zeros(n_sequences, requires_grad=True, device=self._device)
+        window = torch.from_numpy(window).type(action_sequences.dtype).to(self._device)
+
+        window[:, self.window_size - 1, z_size:] = action_sequences[:, 0]
+
+        dream = None
+        if return_dream:
+            dream = torch.zeros((n_sequences, horizon, z_size), requires_grad=False, device=self._device)
+
+        # extend action_sequences with dummy action sequence for t = horizon-1
+        dummy_as = torch.zeros((n_sequences, 1, 1), device=self._device)
+        action_sequences = torch.cat((action_sequences, dummy_as), dim=1)
+
+        w_len = window.view(n_sequences, -1).shape[1]
+        flat_window_idx_no_action = [i for i in range(w_len) if i % (z_size + action_size) not in range(z_size, z_size + action_size)]
+        flat_window_idx = flat_window_idx_no_action + [*range(w_len - action_size, w_len)]
+
+        for t in range(horizon):
+
+            if flatten_window:
+                l2l_window = window.view(n_sequences, -1)[:, flat_window_idx]
+            else:
+                l2l_window = window
+
+            curr_z = self.l2l.forward(l2l_window)
+
+            if return_dream:
+                dream[:, t] = curr_z
+
+            window[:, :self.window_size - 1] = window[:, 1:]
+            window[:, self.window_size - 1] = torch.cat((curr_z, action_sequences[:, t+1]), dim=1)
+
+            if flatten_window:
+                l2r_window = window.view(n_sequences, -1)[:, flat_window_idx_no_action]
+            else:
+                l2r_window = window[:, :, -action_size:]
+
+            rew = self.l2r.forward(l2r_window)
+
+            if self._r_scaler is not None:
+                rew = scaler_inv_transform_torch(self._r_scaler, rew)
+
+            # important to avoid in-place ops to keep track of the gradient
+            rewards = rewards + rew.view(-1)
+
+        if return_dream:
+            dream = dream.cpu().numpy()
+            if self._z_scaler is not None:
+                reshaped = dream.reshape(n_sequences * horizon, -1)
+                self._z_scaler.inverse_transform(reshaped, copy=False)
+            return rewards, dream
+
+        return rewards

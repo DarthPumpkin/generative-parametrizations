@@ -1,6 +1,7 @@
 from pathlib import Path
 from time import sleep
 
+import imageio
 import cv2
 import pandas as pd
 from tqdm import tqdm
@@ -12,7 +13,8 @@ from gym.envs.classic_control import GaussianPendulumEnv
 
 import _gpp
 from gpp.mpc import MPC
-from gpp.models.vision import VaeLstmTFModel, VaeTorchModel
+from gpp.mpc_by_sgd import MpcBySgd
+from gpp.models.vision import VaeTorchModel
 from pendulum_evaluate import TEST_MASS_MEAN
 
 VAE_MODEL_PATH = Path('tf_vae/kl2rl1-z6-b100-kl2rl1-b100-z6-pendulum_v0vae-fetch199.json')
@@ -43,8 +45,9 @@ else:
 Z_FILTER = [2, 5]
 VAE_ARGS = dict(z_size=6, batch_size=64)
 
-MPC_HORIZON = 20
+MPC_HORIZON = 8
 MPC_SEQUENCES = 32000
+SAVE_GIFS = True
 
 
 def set_mass(raw_env, new_mass, fake_mass=None):
@@ -85,12 +88,12 @@ def visual_test():
     env, model, controller = init()
     raw_env = env.unwrapped
 
-    set_mass(raw_env, 1.0, 1.0)
+    set_mass(raw_env, 0.250, 1.3)
 
     for e in range(2000):
         env.reset()
         controller.forget_history()
-        for s in range(300):
+        for s in range(100):
             rgb_obs = env.render(mode='rgb_array')
             action = controller.get_action(rgb_obs)
             _, rewards, dones, info = env.step(action)
@@ -160,20 +163,32 @@ def demo(dream_len=20):
     env, model, controller = init()
     raw_env = env.unwrapped
 
-    set_mass(raw_env, 1.0, 1.0)
+    set_mass(raw_env, 0.350, 0.800)
     interrupt = False
 
-    while not interrupt:
+    max_episodes = 5 if SAVE_GIFS else 20000
+    episode_length = 50 if SAVE_GIFS else 200
+
+    for e in range(max_episodes):
         env.reset()
         controller.forget_history()
-        for s in range(200):
+        frames = []
+        for s in range(episode_length):
             rgb_obs = env.render(mode='rgb_array')
             action, dream = controller.get_action(rgb_obs, return_dream=True)
 
             dreamed_imgs = model.vae_decode(dream[:dream_len])
             for i, img in enumerate(dreamed_imgs):
-                img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
                 img = cv2.resize(img, dsize=(500, 500), interpolation=cv2.INTER_LINEAR)
+
+                if SAVE_GIFS:
+                    comp_img = np.zeros((500, 500 * 2, 3), dtype=np.float32)
+                    comp_img[:, :500] = rgb_obs / 255.
+                    comp_img[:, 500:] = img
+                    comp_img = (comp_img * 255).astype(np.uint8)
+                    frames.append(comp_img)
+
+                img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
                 cv2.imshow('frame', img)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     interrupt = True
@@ -185,13 +200,95 @@ def demo(dream_len=20):
 
             if interrupt:
                 break
+
+        if SAVE_GIFS:
+            gif_path = f'./presentation_pendulum_dream_{e}.gif'
+            imageio.mimsave(gif_path, frames, fps=29)
+
         if interrupt:
             break
 
     cv2.destroyAllWindows()
 
 
+def vae_real_vs_decoded():
+
+    env, model, controller = init()
+    raw_env = env.unwrapped
+
+    set_mass(raw_env, 0.350, 0.800)
+    interrupt = False
+
+    for e in range(5):
+        env.reset()
+        controller.forget_history()
+        frames = []
+        for s in range(200):
+            rgb_obs = env.render(mode='rgb_array')
+            action = controller.get_action(rgb_obs)
+
+            vae_sight = model.vae_decode(model.vae_encode(rgb_obs), apply_filter=False)[0]
+            vae_sight = cv2.resize(vae_sight, dsize=(500, 500), interpolation=cv2.INTER_LINEAR)
+
+            comp_img = np.zeros((500, 500*2, 3), dtype=np.float32)
+            comp_img[:, :500] = rgb_obs / 255.
+            comp_img[:, 500:] = vae_sight
+            comp_img = (comp_img * 255).astype(np.uint8)
+            frames.append(comp_img)
+
+            vae_sight = cv2.cvtColor(comp_img, cv2.COLOR_RGB2BGR)
+            cv2.imshow('frame', vae_sight)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                interrupt = True
+                break
+
+            env.step(action)
+            if interrupt:
+                break
+
+        if SAVE_GIFS:
+            gif_path = f'./presentation_pendulum_vae_{e}.gif'
+            imageio.mimsave(gif_path, frames, fps=29)
+
+        if interrupt:
+            break
+
+    cv2.destroyAllWindows()
+
+
+def visual_test_mpc_by_sgd():
+
+    env, model, controller = init()
+    raw_env = env.unwrapped
+
+    controller = MpcBySgd(env, model, MPC_HORIZON, MPC_SEQUENCES, device=torch.device('cuda'))
+
+    set_mass(raw_env, 1.0, 1.0)
+
+    for e in range(10):
+        env.reset()
+        controller.forget_history()
+        frames = []
+
+        for _ in tqdm(range(200), desc='STEP'):
+            rgb_obs = env.render(mode='rgb_array')
+
+            if SAVE_GIFS:
+                frames.append(rgb_obs.copy())
+
+            action = controller.get_action(rgb_obs)
+            _, rewards, dones, info = env.step(action)
+            print(rewards)
+            sleep(1. / 60)
+
+        if SAVE_GIFS:
+            gif_path = f'./pendulum_pipeline_mpc_by_sgd_{e}.gif'
+            imageio.mimsave(gif_path, frames, fps=29)
+
+
 if __name__ == '__main__':
-    performance_test(output_path='./pipeline_pendulum_exp1_100reps.pkl')
+    # visual_test_mpc_by_sgd()
+    # performance_test(output_path='./pipeline_pendulum_exp1_100reps.pkl')
     # visual_test()
-    # demo()
+    # vae_real_vs_decoded()
+    demo()
