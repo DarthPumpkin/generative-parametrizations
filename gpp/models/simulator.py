@@ -28,7 +28,7 @@ class PendulumSim(BaseModel):
         self.env = env
         self.raw_env = raw_env
 
-    def forward_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray):
+    def forward_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray, **kwargs):
 
         n_sequences, horizon, _ = action_sequences.shape
         all_states = np.zeros((n_sequences, horizon+1) + initial_state.shape)
@@ -86,7 +86,7 @@ class CartPoleSim(BaseModel):
         self.env = env
         self.raw_env = raw_env
 
-    def forward_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray):
+    def forward_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray, **kwargs):
 
         n_sequences, horizon = action_sequences.shape
         all_states = np.zeros((n_sequences, horizon+1) + initial_state.shape)
@@ -205,12 +205,7 @@ class RoboticsSim(BaseModel):
         all_states = np.concatenate(results)
         return all_states
 
-
-    def _fast_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray):
-        pass
-
-
-    def forward_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray):
+    def forward_sim(self, action_sequences: np.ndarray, initial_state: np.ndarray, **kwargs):
 
         main_raw_env = self._main_env.unwrapped  # type: FetchEnv
         initial_sim_state = main_raw_env.sim.get_state()
